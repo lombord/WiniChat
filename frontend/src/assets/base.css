@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+*,
+::before,
+::after {
+  outline: none;
+}
+
+body {
+  @apply min-h-screen;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  @apply truncate;
+  font-family: "Inter", sans-serif;
+  font-weight: bold;
+}
+
+h1 {
+  @apply text-6xl;
+}
+
+h2 {
+  @apply text-5xl;
+}
+
+h3 {
+  @apply text-4xl;
+}
+h4 {
+  @apply text-3xl;
+}
+h5 {
+  @apply text-2xl;
+}
+h6 {
+  @apply text-xl;
+}
+
+div,
+p,
+li,
+input,
+span {
+  font-family: "Lexend", sans-serif;
+}
+p {
+  @apply truncate;
+}
+
+a {
+  font-family: "DM Sans", sans-serif;
+  @apply transition hover:opacity-90;
+}
+
+.btn {
+  @apply h-auto max-h-fit !important;
+}
+
+.tflex {
+  @apply flex flex-wrap gap-2 items-center;
+}
+.col-flex {
+  @apply flex flex-col gap-2;
+}
+
+.center-content {
+  @apply flex justify-center items-center;
+}
+
+.round-img {
+  @apply rounded-full shadow-sm object-cover
+  aspect-square
+  max-w-full
+  object-center;
+}
+
+/* Scroll bar Styles */
+
+/* width */
+::-webkit-scrollbar {
+  --size: clamp(0.2rem, 0.8vw, 0.4rem);
+  width: var(--size);
+  height: var(--size);
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+  @apply bg-base-content bg-opacity-10 rounded-full max-w-[6px];
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-opacity-20;
+}
+
+::-webkit-scrollbar-thumb:active {
+  @apply bg-opacity-25;
+}
+
+/* end */

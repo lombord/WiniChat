@@ -1,0 +1,84 @@
+<template>
+  <CenterBox class="min-h-screen root-box">
+    <div ref="loginBox" class="main-box">
+      <h2 class="text-primary text-center mb-5 pb-2">Register</h2>
+      <Form v-bind="$data" submitLabel="Sign Up" @succeed="userCreated" />
+      <p class="text-base text-center mt-6">
+        Already have an account?
+        <router-link class="text-primary font-bold" :to="{ name: 'login' }">
+          Login
+        </router-link>
+      </p>
+    </div>
+  </CenterBox>
+</template>
+
+<script>
+import Form from "@/components/forms/Form.vue";
+import CenterBox from "@/components/UI/CenterBox.vue";
+import login from "@/mixins/login.js";
+
+export default {
+  data: () => ({
+    fields: {
+      username: {
+        help_text: ["Your identifier name"],
+      },
+      first_name: {},
+      last_name: {},
+
+      email: {
+        attrs: { type: "email" },
+      },
+
+      password: {
+        attrs: { type: "password", autocomplete: "new-password" },
+        validate() {
+          if (this.value.length < 8) {
+            this.errors = ["Password must be at least 8 characters!"];
+          } else {
+            return true;
+          }
+        },
+      },
+      password2: {
+        attrs: {
+          type: "password",
+        },
+        validate(fields) {
+          if (this.value !== fields.password.value) {
+            this.errors = ["Passwords do not match!"];
+          } else {
+            return true;
+          }
+        },
+      },
+    },
+    config: {
+      url: "register/",
+      method: "post",
+    },
+    isSession: false,
+    successMessage: "Successfully Signed Up!",
+  }),
+  mixins: [login],
+  components: {
+    Form,
+    CenterBox,
+  },
+  methods: {
+    userCreated() {
+      const username = this.fields.username.value;
+      const password = this.fields.password.value;
+      const data = { username, password };
+      this.login(data);
+    },
+  },
+};
+</script>
+
+<style>
+.root-box .center-box-slot {
+  @apply max-w-lg !important;
+}
+</style>

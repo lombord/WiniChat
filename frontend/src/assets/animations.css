@@ -1,0 +1,68 @@
+@tailwind components;
+
+@layer components {
+  .click-anim {
+    @apply active:translate-y-0.5 !important;
+  }
+}
+
+.load-anim {
+  @apply relative overflow-hidden pointer-events-none;
+}
+
+.load-anim > * {
+  @apply invisible;
+}
+
+.load-anim::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: inherit;
+  z-index: 100;
+}
+
+.load-anim::after {
+  content: "";
+  @apply loading loading-dots text-primary
+  absolute inset-0 text-center;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 30%;
+  min-width: 25px;
+  max-width: 100px;
+  height: 100%;
+  z-index: 101;
+}
+
+.load-enter-active,
+.load-leave-active {
+  @apply transition;
+}
+
+.load-enter-active {
+  @apply hidden;
+}
+
+.load-leave-active {
+  @apply min-h-screen;
+}
+
+.load-leave-to {
+  @apply load-anim;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  @apply transition;
+}
+
+.fade-enter-active {
+  @apply hidden;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  @apply opacity-0;
+}
