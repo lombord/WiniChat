@@ -61,7 +61,11 @@ a {
 }
 
 .btn {
-  @apply h-auto max-h-fit !important;
+  @apply h-auto min-h-fit !important;
+}
+
+.btn {
+  @apply py-2.5 px-4;
 }
 
 .tflex {
@@ -72,7 +76,7 @@ a {
 }
 
 .center-content {
-  @apply flex justify-center items-center;
+  @apply flex flex-col justify-center items-center;
 }
 
 .round-img {
@@ -97,7 +101,9 @@ a {
 
 /* Handle */
 ::-webkit-scrollbar-thumb {
-  @apply bg-base-content bg-opacity-10 rounded-full max-w-[6px];
+  @apply bg-base-content 
+  bg-opacity-10 rounded-full 
+  max-w-[6px];
 }
 
 /* Handle on hover */

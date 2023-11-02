@@ -54,6 +54,7 @@ export default {
 
   created() {
     this.socket.onChat("last_message", this.newMessage);
+    this.socket.onChat("new_chat", ({ chat_id }) => this.fetchChat(chat_id));
   },
 
   mounted() {

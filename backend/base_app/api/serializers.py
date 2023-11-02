@@ -1,14 +1,15 @@
 import os
 from django.http import HttpRequest
-from rest_framework import serializers
-from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.utils.functional import cached_property
-from re import sub
+from django.contrib.auth.password_validation import validate_password
+
+from rest_framework import serializers as S, exceptions as EX
 
 from ..models import User, PChat, PMessage
 
 
-class UserSerializer(serializers.ModelSerializer):
+class UserSerializer(S.ModelSerializer):
     """
     User serializer for update and to get main info
     """
@@ -36,13 +37,13 @@ class UserSerializer(serializers.ModelSerializer):
         return val
 
 
-class UserRegisterSerializer(serializers.ModelSerializer):
+class UserRegisterSerializer(S.ModelSerializer):
     """
     Serializer to register a user
     """
-    password2 = serializers.CharField(max_length=128,
-                                      label='Confirm Password',
-                                      write_only=True)
+    password2 = S.CharField(max_length=128,
+                            label='Confirm Password',
+                            write_only=True)
 
     class Meta:
         model = User
@@ -60,7 +61,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         """
         password1 = self.initial_data['password']
         if password1 != value:
-            raise serializers.ValidationError("Passwords didn't match!")
+            raise S.ValidationError("Passwords didn't match!")
         return value
 
     def validate_password(self, value):
@@ -70,7 +71,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         try:
             validate_password(value)
         except Exception as e:
-            raise serializers.ValidationError(e.messages)
+            raise S.ValidationError(e.messages)
         return value
 
     def create(self, validated_data: dict):
@@ -85,7 +86,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         return user
 
 
-class MessageSerializer(serializers.ModelSerializer):
+class MessageSerializer(S.ModelSerializer):
     """
     Serializer for private messages
     """
@@ -96,13 +97,13 @@ class MessageSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'owner', 'chat')
 
 
-class ChatSerializer(serializers.ModelSerializer):
+class ChatSerializer(S.ModelSerializer):
     """
     Private chat serializer to get and create
     """
-    companion = serializers.SerializerMethodField()
-    latest = serializers.SerializerMethodField()
-    url = serializers.SerializerMethodField()
+    companion = S.SerializerMethodField()
+    latest = S.SerializerMethodField()
+    url = S.SerializerMethodField()
 
     class Meta:
         model = PChat
@@ -129,7 +130,13 @@ class ChatSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data['from_user'] = self.request.user
-        return super().create(validated_data)
+        try:
+            chat = self.Meta.model(**validated_data)
+            chat.full_clean()
+            chat.save()
+        except ValidationError as e:
+            raise EX.ValidationError(e.message_dict)
+        return chat
 
     def get_url(self, pChat: PChat):
         """

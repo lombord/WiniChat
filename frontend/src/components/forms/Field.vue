@@ -1,13 +1,15 @@
 <template>
-  <div>
-    <label v-if="field.label" :for="field_id">{{ field.label }}</label>
+  <div :id="`field_${name}`">
+    <label class="field-label" v-if="field.label" :for="field_id">{{
+      field.label
+    }}</label>
     <TInput
       class="w-full"
       :class="{ 'error-field': !isValid && !this.field.value }"
       :name="name"
       :id="field_id"
       v-model="field.value"
-      v-bind="field.attrs"
+      v-bind="Object.assign(field.attrs, $attrs)"
     />
     <ul class="mt-1" v-if="!isValid">
       <li class="error-msg" v-for="(err, i) in field.errors" :key="i">
@@ -40,6 +42,10 @@ export default {
     "required" in attrs || (attrs.required = true);
     this.field.errors = [];
     this.field.help_text || (this.field.help_text = []);
+
+    if (this.field.showLabel && !this.field.label) {
+      this.field.label = attrs.placeholder;
+    }
   },
   computed: {
     isValid() {
@@ -57,6 +63,10 @@ export default {
 </script>
 
 <style scoped>
+.field-label {
+  @apply leading-[1.8];
+}
+
 .error-msg {
   @apply text-red-600;
 }

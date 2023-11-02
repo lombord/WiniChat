@@ -173,6 +173,11 @@ class SessionSocket {
     this._socket.send(JSON.stringify(data));
   }
 
+  sendEvent(event, options) {
+    options || (options = {});
+    this.send({ event, ...options });
+  }
+
   // Base method to send chat message
   sendChat(chat_id, data) {
     this.send({ event: "send_chat", chat_id, data });

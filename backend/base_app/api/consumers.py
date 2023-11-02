@@ -49,6 +49,9 @@ class ChatConsumerMixin:
         await self.notify_companion(chat_id, "last_message",
                                     data.copy())
 
+    async def new_chat(self, chat_id, **kwargs):
+        await self.notify_companion(chat_id, "new_chat", {'chat_id': chat_id})
+
     async def notify_companion(self, chat_id, event: str, data: dict):
         """
         Notifies companion for given chat
@@ -58,6 +61,8 @@ class ChatConsumerMixin:
             data (dict): data to send with event
         """
         chat = self.joint_chats.get(chat_id)
+        if not chat:
+            chat = await self.get_chat(chat_id)
         comp_id = chat.get_companion_id(self.user.pk)
         group = self.user_p % comp_id
         await self.send_chat_event(group, event, data)
@@ -70,7 +75,7 @@ class ChatConsumerMixin:
         """
         assert chat_id not in self.joint_chats
 
-        chat = await DSA(self.user.get_chats().get)(pk=chat_id)
+        chat = await self.get_chat(chat_id)
         await self.join_layer(self.chat_p % chat_id)
         self.joint_chats[chat_id] = chat
         print("%s joint the chat: %s" % (self.user, chat_id))
@@ -84,6 +89,10 @@ class ChatConsumerMixin:
         del self.joint_chats[chat_id]
         await self.leave_layer(self.chat_p % chat_id)
         print("%s left the chat: %s" % (self.user, chat_id))
+
+    @DSA
+    def get_chat(self, chat_id):
+        return self.user.get_chats().get(pk=chat_id)
 
     async def send_chat_event(self, group: str, event: str,
                               data: dict = None, **kwargs):

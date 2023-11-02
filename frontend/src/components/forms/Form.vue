@@ -11,10 +11,13 @@
       :key="key"
       :name="key"
       :field="field"
+      :disabled="disabled"
     />
-    <button ref="submitBtn" type="submit" class="submit-btn click-anim">
-      {{ submitLabel }}
-    </button>
+    <slot name="submitBtn" :submitLabel="submitLabel">
+      <button ref="submitBtn" type="submit" class="submit-btn click-anim">
+        {{ submitLabel }}
+      </button>
+    </slot>
   </form>
 </template>
 
@@ -65,6 +68,10 @@ export default {
     fetchOptions: {
       type: Boolean,
       default: true,
+    },
+
+    disabled: {
+      type: Boolean,
     },
   },
 
@@ -132,10 +139,14 @@ export default {
     // Checks if all fields are valid
     isAllValid() {
       const isValid = Object.values(this.fields).reduce((val, field) => {
+        field.errors = [];
+
         if (field.attrs.required && !field.value) {
           field.errors = ["This field is required!"];
           return false;
         }
+        if (!field.value) return val && true;
+
         const { max_length } = field;
         if (max_length && field.value.length > max_length) {
           field.errors = [`Max length must be ${max_length}`];
@@ -156,7 +167,7 @@ export default {
         const response = await this.$session.animate(promise, elm);
         const msg = this.successMessage;
         msg && this.$flashes.success(msg);
-        this.$emit("succeed", response);
+        this.$emit("succeed", response, this.data);
       } catch (error) {
         this.$flashes.error("Something went wrong!");
         this.setErrors(error.response.data);

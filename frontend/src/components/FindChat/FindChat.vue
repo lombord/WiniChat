@@ -1,9 +1,6 @@
 <template>
-  <Modal
-    class="root-box col-flex p-1.5 rounded-[26px] overflow-hidden gap-4"
-    v-model:show="showVal"
-  >
-    <Search v-model="query" class="rounded-sm" />
+  <Modal class="root-box col-flex" v-model:show="showVal">
+    <Search v-model="query" />
     <div ref="fetchElm" class="overflow-y-auto flex-1 pr-1">
       <QPeople @chosen="startChat" v-if="dataList.length" :people="dataList">
         <template #bottom>
@@ -60,8 +57,14 @@ export default {
   methods: {
     async startChat({ id: to_user }, elm) {
       const prom = this.$session.post("chats/", { to_user });
-      const { data } = await this.$session.animate(prom, elm);
-      this.chats.unshift(data);
+      try {
+        const { data } = await this.$session.animate(prom, elm);
+        const { id: chat_id } = data;
+        this.$session.socket.sendEvent("new_chat", { chat_id });
+        this.chats.unshift(data);
+      } catch ({ response: { data } }) {
+        this.$flashes.error(data["__all__"][0]);
+      }
       elm.setAttribute("disabled", "disabled");
     },
   },
@@ -82,6 +85,7 @@ export default {
 
 <style scoped>
 .root-box {
+  @apply gap-4;
 }
 
 .observer {

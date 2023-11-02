@@ -22,13 +22,13 @@ export default {
 
 <style scoped>
 .search-root {
-  @apply relative flex items-center -z-10;
+  @apply relative flex items-center;
 }
 
 .s-input {
   @apply w-full pl-10
   py-2.5 h-auto 
-  rounded-full !important;
+  rounded-full;
 }
 
 .icon-div {

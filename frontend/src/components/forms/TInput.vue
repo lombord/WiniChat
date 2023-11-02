@@ -39,6 +39,12 @@ export default {
   hover:outline-primary/80;
 }
 
+.input[disabled]{
+  @apply outline cursor-auto 
+  bg-base-200 outline-base-300
+  text-base-content/60;
+}
+
 .input {
   @apply outline-offset-0 !important;
 }

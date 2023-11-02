@@ -6,6 +6,7 @@ from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.db.models import Q, F
+from django.db.models.functions import Greatest, Least
 
 
 class UserQuerySet(models.QuerySet):
@@ -164,14 +165,14 @@ class PChat(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=['from_user', 'to_user'],
+                Least('from_user', 'to_user'),
+                Greatest('from_user', 'to_user'),
                 name='unique_chat',
-                violation_error_message=_(
-                    'Personal chat can be created only once between two users.')),
+                violation_error_message=_('You already have a chat with this person.')),
             models.CheckConstraint(
                 check=~Q(from_user=F('to_user')),
                 name='not_the_same_user',
-                violation_error_message=_("Can't start chat with yourself"),)
+                violation_error_message=_("Can't start chat with yourself."),)
         ]
 
         ordering = '-created',
