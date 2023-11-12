@@ -1,18 +1,22 @@
 <template>
-  <div class="chat" :class="chatCls">
-    <div class="chat-image avatar">
-      <div class="round-img">
-        <img :src="owner.photo" class="w-12" />
+  <div>
+    <div class="chat" :class="chatCls">
+      <div class="chat-image avatar">
+        <div class="round-img">
+          <img :src="owner.photo" class="w-12" />
+        </div>
+      </div>
+      <div v-if="isPosted" class="chat-footer">
+        <time class="text-xs opacity-50">{{ createdTime }}</time>
+      </div>
+      <div class="chat-bubble break-words max-w-lg">
+        {{ message.content }}
+        <span
+          v-if="!isPosted"
+          class="load-anim align-middle py-1 px-2 ml-2"
+        ></span>
       </div>
     </div>
-    <div v-if="isPosted" class="chat-footer">
-      <time class="text-xs opacity-50">{{ created }}</time>
-    </div>
-    <div class="chat-bubble break-words max-w-lg">
-      {{ message.content }}
-      <span v-if="!isPosted" class="load-anim align-middle py-1 px-2 ml-2"></span>
-    </div>
-    <!-- <div class="chat-footer opacity-50">Delivered</div> -->
   </div>
 </template>
 
@@ -29,6 +33,9 @@ export default {
       type: Object,
       required: true,
     },
+    sibling: {
+      type: Object,
+    },
   },
   computed: {
     isSession() {
@@ -39,9 +46,25 @@ export default {
     chatCls() {
       return this.isSession ? "chat-end" : "chat-start";
     },
+
     created() {
-      return moment(this.message.created).format("LT");
+      return moment(this.message.created);
     },
+
+    createdTime() {
+      return this.created.format("LT");
+    },
+
+    
+
+    siblingDay() {
+      return moment(this.sibling.created).day();
+    },
+
+    showSep() {
+      return !this.sibling || this.created.day() != this.siblingDay;
+    },
+
     isPosted() {
       return this.message.id !== undefined;
     },

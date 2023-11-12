@@ -1,8 +1,18 @@
 <template>
-  <div class="messages">
+  <div class="py-2 flex flex-col-reverse">
     <slot name="top"></slot>
-    <div v-for="(msg, i) in messages">
-      <Message :key="msg.id || i" :message="msg" :owner="getOwner(msg)" />
+    <div v-for="(messages, date) in msgGroup" :key="date" class="messages">
+      <Message
+        :key="msg.id || i"
+        v-for="(msg, i) in messages"
+        :message="msg"
+        :owner="getOwner(msg)"
+      />
+      <div class="date-divider">
+        <span class="date-badge badge badge-primary">
+          {{ divDate(date) }}
+        </span>
+      </div>
     </div>
     <slot name="bottom"></slot>
   </div>
@@ -10,6 +20,7 @@
 
 <script>
 import Message from "./Message.vue";
+import moment from "moment";
 
 export default {
   props: {
@@ -27,10 +38,31 @@ export default {
     },
   },
 
+  computed: {
+    msgGroup() {
+      let result = {};
+      this.messages.forEach((msg) => {
+        let created = moment(msg.created).format("YYYY-MM-DD");
+        (result[created] || (result[created] = [])).push(msg);
+      });
+      return result;
+    },
+  },
+
   methods: {
     getOwner(msg) {
       if (msg.owner === undefined) return this.user;
       return msg.owner == this.user.id ? this.user : this.companion;
+    },
+
+    divDate(date) {
+      return moment(date).calendar(null, {
+        sameDay: "[Today]",
+        nextWeek: "dddd",
+        lastDay: "[Yesterday]",
+        lastWeek: "dddd",
+        sameElse: "DD/MM/YYYY",
+      });
     },
   },
 
@@ -41,5 +73,11 @@ export default {
 <style scoped>
 .messages {
   @apply flex flex-col-reverse;
+}
+.date-divider {
+  @apply text-center sticky top-24;
+}
+.date-badge {
+  @apply text-base p-3;
 }
 </style>

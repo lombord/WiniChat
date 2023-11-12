@@ -4,11 +4,10 @@
     <div ref="fetchElm" class="overflow-y-auto flex-1 pr-1">
       <QPeople @chosen="startChat" v-if="dataList.length" :people="dataList">
         <template #bottom>
-          <div
-            :key="query || 0"
-            v-int="intersected"
-            class="load-anim observer"
-          ></div>
+          <div v-int="intersected" class="pt-20">
+
+            <div :key="query || 0" class="load-anim observer"></div>
+          </div>
         </template>
       </QPeople>
       <h4 v-else class="text-primary text-center">Empty</h4>

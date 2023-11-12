@@ -50,7 +50,7 @@ export default {
 }
 
 .close-btn {
-  @apply py-3 px-3.5 rounded-full 
+  @apply py-3 px-3.5 rounded-full
   btn-outline opacity-80 hover:opacity-100
   absolute right-2 top-2;
 }

@@ -1,8 +1,6 @@
 <template>
-  <div class="main-div">
-    <div
-      class="flex gap-2 items-center truncate bg-base-200 px-4 py-2 border-b border-base-content/20"
-    >
+  <div @scroll="scrolled" ref="fetchElm" class="main-div">
+    <div class="chat-top">
       <div class="avatar" :class="avatarCls">
         <div class="round-img w-16">
           <img :src="companion.photo" />
@@ -10,7 +8,7 @@
       </div>
       <h5 class="text-primary">{{ username }}</h5>
     </div>
-    <div ref="fetchElm" class="messages-main">
+    <div class="messages-main">
       <Messages
         @vue:mounted="scrollBottom"
         v-if="dataList.length"
@@ -19,11 +17,23 @@
         :companion="companion"
       >
         <template #bottom>
-          <div v-int="intersected" class="load-anim observer"></div>
+          <div v-int="intersected" class="pb-32">
+            <div class="load-anim observer"></div>
+          </div>
         </template>
       </Messages>
     </div>
-    <ChatInput v-model="content" @submit.prevent="postMsg" />
+
+    <ChatInput v-model="content" @submit.prevent="postMsg">
+      <template v-if="showScroll" #top>
+        <button
+          @click="scrollBottom({ behavior: 'smooth' })"
+          class="btn to-bottom"
+        >
+          <i class="fa-solid fa-arrow-down"></i>
+        </button>
+      </template>
+    </ChatInput>
   </div>
 </template>
 
@@ -35,8 +45,8 @@ import ChatInput from "./ChatInput.vue";
 
 export default {
   data: () => ({
-    config: { baseURL: "" },
     content: "",
+    showScroll: false,
   }),
 
   props: {
@@ -87,19 +97,26 @@ export default {
       const prom = this.$session.post(this.url, data);
       const response = await this.$session.animate(prom, null, "xyz");
       Object.assign(msg, response.data);
+      this.$nextTick(this.scrollBottom);
       this.chat.latest = msg;
       this.socket.sendChat(this.chat.id, msg);
     },
 
     addMsg(msg) {
       this.dataList.unshift(msg);
-      this.scrollBottom();
+      this.$nextTick(this.scrollBottom);
       return this.dataList[0];
     },
 
-    scrollBottom() {
+    scrollBottom(options) {
       const el = this.$refs.fetchElm;
-      el.scrollTo(0, el.scrollHeight);
+      el.scrollTo({ top: el.scrollHeight, ...options });
+    },
+
+    scrolled({ target: el }) {
+      this.showScroll = !(
+        Math.abs(el.scrollHeight - el.scrollTop - el.clientHeight) < 150
+      );
     },
   },
 
@@ -114,11 +131,27 @@ export default {
 
 <style scoped>
 .main-div {
-  @apply flex flex-col;
+  @apply flex flex-col relative 
+  overflow-y-auto h-full;
+}
+
+.to-bottom {
+  @apply btn-primary absolute py-4
+  rounded-full 
+  opacity-60 hover:opacity-100
+  bottom-20 right-2 btn-square;
+}
+
+.chat-top {
+  @apply flex gap-2 items-center truncate sticky top-0
+  bg-base-200/50 backdrop-blur-3xl px-4 border-b
+  z-10 py-1.5 shrink-0
+  border-base-content/10;
 }
 
 .messages-main {
-  @apply flex-1 overflow-y-auto px-4 sm:px-5 md:px-6 xl:px-8;
+  @apply flex-1 px-4 sm:px-5 
+  md:px-6 xl:px-8;
 }
 
 .observer {

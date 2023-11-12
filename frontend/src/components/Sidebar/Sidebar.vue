@@ -12,10 +12,12 @@
         <FindChat v-if="find_show" :chats="chats" v-model:show="find_show" />
       </div>
       <div class="divider rounded-full mt-2"></div>
-      <div class="chats-box flex-1 shrink-0 overflow-y-auto" ref="fetchElm">
+      <div class="chats-box flex-1 shrink-0 overflow-y-auto pb-2" ref="fetchElm">
         <Chats v-if="chats.length" v-bind="$attrs" :chats="chats">
           <template #bottom>
-            <div v-int="intersected" class="observer load-anim"></div>
+            <div v-int="intersected" class="pt-10">
+              <div class="observer load-anim"></div>
+            </div>
           </template>
         </Chats>
         <h3 v-else class="text-primary text-center">Empty</h3>

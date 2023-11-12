@@ -1,5 +1,5 @@
 <template>
-  <div class="main-div">
+  <div class="content-div">
     <Sidebar v-model:current="current" />
     <div class="flex-1">
       <KeepAlive v-if="current" :max="6">
@@ -26,7 +26,7 @@ export default {
 </script>
 
 <style scoped>
-.main-div {
+.content-div {
   @apply flex h-screen overflow-hidden;
 }
 </style>

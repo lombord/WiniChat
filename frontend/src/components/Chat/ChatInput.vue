@@ -1,5 +1,6 @@
 <template>
   <div class="input-box">
+    <slot name="top"></slot>
     <form class="s-form">
       <TInput
         v-bind="$attrs"
@@ -28,17 +29,10 @@ export default {
 
 <style scoped>
 .input-box {
-  @apply text-center p-2 pt-0 bg-base-200/50
-  pt-1
-  z-20 relative;
+  @apply text-center p-2 py-2.5 bg-base-100/30
+  backdrop-blur-2xl sticky bottom-0
+  z-10 relative;
 }
-
-/* .input-box::before {
-  @apply content-[''] bg-base-200/5
-  absolute inset-x-0 pt-3 z-10 top-0
-  -translate-y-3
-  backdrop-blur-sm;
-} */
 
 .s-form {
   @apply relative flex items-center 
