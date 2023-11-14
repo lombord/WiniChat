@@ -48,6 +48,7 @@ export default {
   rounded-full min-h-fit h-fit
   btn btn-ghost text-lg outline-0
   text-base-content/50
-  peer-focus:visible;
+  peer-focus:visible
+  active:visible;
 }
 </style>

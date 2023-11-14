@@ -1,39 +1,55 @@
 <template>
-  <div @scroll="scrolled" ref="fetchElm" class="main-div">
-    <div class="chat-top">
-      <div class="avatar" :class="avatarCls">
-        <div class="round-img w-16">
-          <img :src="companion.photo" />
+  <div class="root-div">
+    <div @scroll="scrolled" ref="fetchElm" class="main-div">
+      <div class="chat-top">
+        <div class="user-short">
+          <div class="avatar" :class="avatarCls">
+            <div class="round-img w-16">
+              <img :src="companion.photo" />
+            </div>
+          </div>
+          <h5 class="text-primary">{{ username }}</h5>
+        </div>
+        <div class="">
+          <button
+            @click="showSide = !showSide"
+            class="btn p-0 btn-ghost rounded-full text-lg opacity-60 hover:opacity-100"
+          >
+            <i v-if="!showSide"
+              class="bi bi-layout-sidebar-inset-reverse py-2 px-3.5"
+            ></i>
+            <i v-else class="fa-solid py-2.5 px-3 fa-xmark"></i>
+          </button>
         </div>
       </div>
-      <h5 class="text-primary">{{ username }}</h5>
-    </div>
-    <div class="messages-main">
-      <Messages
-        @vue:mounted="scrollBottom"
-        v-if="dataList.length"
-        :messages="dataList"
-        :user="user"
-        :companion="companion"
-      >
-        <template #bottom>
-          <div v-int="intersected" class="pb-32">
-            <div class="load-anim observer"></div>
-          </div>
+      <div class="messages-main">
+        <Messages
+          @vue:mounted="scrollBottom"
+          v-if="dataList.length"
+          :messages="dataList"
+          :user="user"
+          :companion="companion"
+        >
+          <template #bottom>
+            <div v-int="intersected" class="pb-32">
+              <div class="load-anim observer"></div>
+            </div>
+          </template>
+        </Messages>
+      </div>
+      <ChatInput v-model="content" @submit.prevent="postMsg">
+        <template v-if="showScroll" #top>
+          <button
+            @click="scrollBottom({ behavior: 'smooth' })"
+            class="btn to-bottom"
+          >
+            <i class="fa-solid fa-arrow-down"></i>
+          </button>
         </template>
-      </Messages>
+      </ChatInput>
     </div>
 
-    <ChatInput v-model="content" @submit.prevent="postMsg">
-      <template v-if="showScroll" #top>
-        <button
-          @click="scrollBottom({ behavior: 'smooth' })"
-          class="btn to-bottom"
-        >
-          <i class="fa-solid fa-arrow-down"></i>
-        </button>
-      </template>
-    </ChatInput>
+    <ChatSide :user="companion" :show="showSide" />
   </div>
 </template>
 
@@ -42,11 +58,13 @@ import fetchData from "@/mixins/fetchData.js";
 
 import Messages from "./Messages.vue";
 import ChatInput from "./ChatInput.vue";
+import ChatSide from "./ChatSide.vue";
 
 export default {
   data: () => ({
     content: "",
     showScroll: false,
+    showSide: false,
   }),
 
   props: {
@@ -125,14 +143,22 @@ export default {
   },
 
   mixins: [fetchData],
-  components: { ChatInput, Messages },
+  components: { ChatInput, Messages, ChatSide },
 };
 </script>
 
 <style scoped>
+.root-div {
+  @apply flex h-full overflow-hidden;
+}
+
 .main-div {
-  @apply flex flex-col relative 
+  @apply flex flex-col relative flex-1
   overflow-y-auto h-full;
+}
+
+.main-div::-webkit-scrollbar-track {
+  @apply bg-base-200;
 }
 
 .to-bottom {
@@ -143,10 +169,14 @@ export default {
 }
 
 .chat-top {
-  @apply flex gap-2 items-center truncate sticky top-0
+  @apply sticky top-0 flex items-center justify-between
   bg-base-200/50 backdrop-blur-3xl px-4 border-b
   z-10 py-1.5 shrink-0
   border-base-content/10;
+}
+
+.user-short {
+  @apply flex gap-2 items-center truncate;
 }
 
 .messages-main {

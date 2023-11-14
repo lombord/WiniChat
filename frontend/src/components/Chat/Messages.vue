@@ -75,9 +75,12 @@ export default {
   @apply flex flex-col-reverse;
 }
 .date-divider {
-  @apply text-center sticky top-24;
+  @apply text-center sticky top-20 md:top-24 py-2;
 }
 .date-badge {
-  @apply text-base p-3;
+  @apply text-base p-3 
+  bg-opacity-60 text-white border-none
+  drop-shadow
+  ;
 }
 </style>
