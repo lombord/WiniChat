@@ -180,4 +180,4 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 # allowed api urls pattern
-CORS_URLS_REGEX = r"^/api/.*$"
+CORS_URLS_REGEX = r"^/(?:api|media)/.*$"

@@ -15,7 +15,8 @@
             @click="showSide = !showSide"
             class="btn p-0 btn-ghost rounded-full text-lg opacity-60 hover:opacity-100"
           >
-            <i v-if="!showSide"
+            <i
+              v-if="!showSide"
               class="bi bi-layout-sidebar-inset-reverse py-2 px-3.5"
             ></i>
             <i v-else class="fa-solid py-2.5 px-3 fa-xmark"></i>
@@ -37,7 +38,7 @@
           </template>
         </Messages>
       </div>
-      <ChatInput v-model="content" @submit.prevent="postMsg">
+      <ChatInput :message="message" @submit="postMsg">
         <template v-if="showScroll" #top>
           <button
             @click="scrollBottom({ behavior: 'smooth' })"
@@ -62,7 +63,7 @@ import ChatSide from "./ChatSide.vue";
 
 export default {
   data: () => ({
-    content: "",
+    message: null,
     showScroll: false,
     showSide: false,
   }),
@@ -100,6 +101,7 @@ export default {
 
   created() {
     this.socket.joinChat(this.chat.id, this.addMsg);
+    this.resetMsg();
   },
 
   beforeUnmount() {
@@ -107,17 +109,40 @@ export default {
   },
 
   methods: {
-    async postMsg() {
-      if (!this.content) return;
-      const data = { content: this.content };
-      this.content = "";
-      const msg = this.addMsg(data);
+    async postMsg(tmpFile, resetCB) {
+      if (!(this.message.content || this.message.file)) return;
+      const data = this.message.file
+        ? this.toFormData(this.message)
+        : this.message;
+      const msg = this.addMsg(this.message);
+      msg.files = tmpFile;
+      this.resetMsg();
+      resetCB();
       const prom = this.$session.post(this.url, data);
-      const response = await this.$session.animate(prom, null, "xyz");
-      Object.assign(msg, response.data);
-      this.$nextTick(this.scrollBottom);
-      this.chat.latest = msg;
-      this.socket.sendChat(this.chat.id, msg);
+      try {
+        const response = await this.$session.animate(prom, null, "xyz");
+        Object.assign(msg, response.data);
+        this.$nextTick(this.scrollBottom);
+        this.chat.latest = msg;
+        this.socket.sendChat(this.chat.id, msg);
+      } catch (error) {
+        this.$flashes.error("Invalid file type!");
+      }
+    },
+
+    toFormData(obj) {
+      const form = new FormData();
+      for (const key in obj) {
+        form.append(key, obj[key]);
+      }
+      return form;
+    },
+
+    resetMsg() {
+      this.message = {
+        content: "",
+        file: null,
+      };
     },
 
     addMsg(msg) {
@@ -143,6 +168,7 @@ export default {
   },
 
   mixins: [fetchData],
+  emits: ["submit",],
   components: { ChatInput, Messages, ChatSide },
 };
 </script>
@@ -171,7 +197,7 @@ export default {
 .chat-top {
   @apply sticky top-0 flex items-center justify-between
   bg-base-200/50 backdrop-blur-3xl px-4 border-b
-  z-10 py-1.5 shrink-0
+  z-[100] py-2 shrink-0
   border-base-content/10;
 }
 

@@ -2,6 +2,7 @@ import os
 from uuid import uuid4
 
 from django.db import models
+from django.core.validators import FileExtensionValidator
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.models import AbstractUser, UserManager
@@ -181,6 +182,35 @@ class PChat(models.Model):
         return f"Chat: {self.from_user} and {self.to_user}"
 
 
+IMAGE_EXTS = {'png', 'jpg', 'jpeg', 'gif'}
+AUDIO_EXTS = {'mp3', 'ogg', 'wav', }
+VIDEO_EXTS = {'mp4', 'mkv', 'avi', 'mov',
+              'wmv', 'flv', 'webm', }
+DOC_EXTS = {'doc', 'docx', 'txt', 'pdf', 'rtf', 'odt', 'ott', 'xls',
+            'xlsx', 'csv', 'ppt', 'pptx', 'odp', 'ods',
+            'html', 'htm', 'xml'}
+
+exts_dict = {'image': IMAGE_EXTS, 'audio': AUDIO_EXTS,
+             'video': VIDEO_EXTS, 'doc': DOC_EXTS}
+
+file_validator = FileExtensionValidator(IMAGE_EXTS | VIDEO_EXTS)
+
+
+def get_file_type(ext: str):
+    ext = ext[1:].lower()
+    for k, v in exts_dict.items():
+        if ext in v:
+            return k
+
+
+def message_filepath(instance: 'PMessage', fname: str):
+    ext = os.path.splitext(fname)[-1]
+    ftype = get_file_type(ext)
+    instance.file_type = ftype
+    name = uuid4().hex
+    return f"pchat/{instance.chat_id}/{ftype}s/{name}{ext}"
+
+
 class PMessage(models.Model):
     """
     Message model for private chats
@@ -193,6 +223,11 @@ class PMessage(models.Model):
                              verbose_name=_('Message PChat'))
     content = models.TextField(_('Message content'),
                                blank=True, null=True)
+    file = models.FileField(upload_to=message_filepath,
+                            validators=[file_validator,],
+                            null=True, blank=True)
+    file_type = models.CharField(
+        _('File type'), max_length=50, null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True)
     edited = models.DateTimeField(auto_now=True)
 

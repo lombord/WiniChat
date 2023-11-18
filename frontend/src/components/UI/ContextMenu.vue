@@ -1,6 +1,6 @@
 <template>
   <div class="root" v-if="show">
-    <div v-for="(item, i) in menu" :key="i">
+    <div class="buttons" v-for="(item, i) in menu" :key="i">
       <button
         @click="selected(item)"
         class="menu-btn"
@@ -31,6 +31,7 @@ export default {
     selected(item) {
       this.$emit("update:show", false);
       item.cb && item.cb();
+      this.$nextTick(() => this.$emit("chosen"));
     },
   },
 };
@@ -40,16 +41,11 @@ export default {
 .root {
   @apply absolute p-3 bg-base-100/20 
   rounded-xl overflow-hidden 
-  flex flex-col gap-1
-  shadow
+  flex flex-col gap-2 shadow
   z-50 backdrop-blur-xl;
 }
 
 .menu-btn {
   @apply btn glass w-full py-4;
-}
-
-.menu-btn {
-  @apply h-auto min-h-fit !important;
 }
 </style>

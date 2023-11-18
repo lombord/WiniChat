@@ -49,6 +49,7 @@ const routes = [
     component: () => import("@/views/LoginView.vue"),
     beforeEnter: IfNotAuthenticated,
   },
+
   {
     path: "/register/",
     name: "register",

@@ -324,6 +324,7 @@ export const useSessionStore = defineStore("session", {
      */
     get(url, config) {
       (config || (config = {})).url = url;
+      config.method = "get";
       return this.request(config);
     },
 
@@ -373,6 +374,21 @@ export const useSessionStore = defineStore("session", {
      */
     patch(...args) {
       return this.dataRequest("patch", ...args);
+    },
+
+    async download(url, name) {
+      const { data } = await this.get(url, {
+        responseType: "blob",
+        baseUrl: "",
+      });
+      const href = URL.createObjectURL(data);
+      const link = document.createElement("a");
+      link.style.display = "none";
+      link.href = href;
+      link.setAttribute("download", name);
+      link.click();
+
+      URL.revokeObjectURL(href);
     },
 
     /**

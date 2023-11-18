@@ -17,7 +17,7 @@ export default {
       let data = new FormData();
       data.append("photo", img);
       try {
-        ({ data } = await this.$session.patch("session/", data, true));
+        ({ data } = await this.$session.patch("session/", data));
         this.user.photo = data.photo;
         this.$flashes.info("Photo has been updated");
       } catch (err) {

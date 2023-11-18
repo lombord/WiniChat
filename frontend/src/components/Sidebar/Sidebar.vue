@@ -12,7 +12,10 @@
         <FindChat v-if="find_show" :chats="chats" v-model:show="find_show" />
       </div>
       <div class="divider rounded-full mt-2"></div>
-      <div class="chats-box flex-1 shrink-0 overflow-y-auto pb-2" ref="fetchElm">
+      <div
+        class="chats-box flex-1 shrink-0 overflow-y-auto pb-2"
+        ref="fetchElm"
+      >
         <Chats v-if="chats.length" v-bind="$attrs" :chats="chats">
           <template #bottom>
             <div v-int="intersected" class="pt-10">
@@ -124,9 +127,8 @@ export default {
   @apply pt-8 px-3
   md:pt-10 md:px-8
   h-screen w-full
-  overflow-hidden
   border-e border-base-content/20
-  overflow-auto bg-base-200;
+  overflow-y-auto bg-base-200;
 }
 
 .find-btn {

@@ -7,16 +7,16 @@
         @click="$emit('update:show', false)"
       >
         <div
-          :class="[$attrs.class]"
+          :class="$attrs.class"
           class="modal-content"
           @click.stop
           @mousedown.stop
         >
-          <button @click="$emit('update:show', false)" class="btn close-btn">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
           <slot> </slot>
         </div>
+        <button @click="$emit('update:show', false)" class="btn close-btn">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
       </div>
     </div>
   </Transition>
@@ -46,11 +46,13 @@ export default {
 .modal-wrap {
   @apply bg-slate-800/60
   backdrop-blur-[1px] p-3 sm:p-4
+  relative
+  cursor-pointer
   min-h-screen;
 }
 
 .close-btn {
-  @apply py-3 px-3.5 rounded-full
+  @apply py-3 px-3.5 rounded-full text-white
   btn-outline opacity-80 hover:opacity-100
   absolute right-2 top-2;
 }
@@ -58,6 +60,7 @@ export default {
 .modal-content {
   @apply p-3 transition rounded-3xl
   overflow-hidden
+  cursor-auto
   max-h-[700px]
   max-w-2xl bg-base-100 
   w-[min(600px,100%)]

@@ -17,15 +17,16 @@ app.use(createPinia());
 
 const { useSessionStore } = await import("@/stores/session.js");
 const { useFlashesStore } = await import("@/stores/flashes.js");
+const { useMediaStore } = await import("@/stores/media.js");
 
 const sessionStore = useSessionStore();
-const flashesStore = useFlashesStore();
 
 // list of global plugins
 const globalPlugins = [
   { name: "request", value: request },
   { name: "session", value: sessionStore },
-  { name: "flashes", value: flashesStore },
+  { name: "flashes", value: useFlashesStore() },
+  { name: "media", value: useMediaStore() },
 ];
 
 app.use(defineGlobals, globalPlugins);

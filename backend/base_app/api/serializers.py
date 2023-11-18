@@ -86,15 +86,32 @@ class UserRegisterSerializer(S.ModelSerializer):
         return user
 
 
+class FileSerializer(S.Serializer):
+    url = S.FileField(source='file', default=None)
+    file_type = S.CharField()
+    file_name = S.SerializerMethodField()
+
+    def get_file_name(self, instance: PMessage):
+        if instance.file:
+            return os.path.basename(instance.file.name)
+
+
 class MessageSerializer(S.ModelSerializer):
     """
     Serializer for private messages
     """
+    files = FileSerializer(source='*', read_only=True)
+
     class Meta:
         model = PMessage
-        fields = ('id', 'owner', 'content', 'created',
-                  'chat', 'edited')
-        read_only_fields = ('id', 'owner', 'chat')
+        fields = ('id', 'owner', 'content', 'file',
+                  'files', 'created', 'chat', 'edited')
+        read_only_fields = ('id', 'owner', 'chat', 'files')
+        extra_kwargs = {
+            'file': {'write_only': True,
+                     'required': False, 'default': None,
+                     'initial': None, 'allow_null': True}
+        }
 
 
 class ChatSerializer(S.ModelSerializer):

@@ -108,7 +108,7 @@ export default {
   @apply relative;
 }
 
-.photo::before {
+:deep(.photo::before) {
   content: "";
   @apply absolute inset-0 border-2 
   rounded-full z-[1];

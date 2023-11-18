@@ -2,11 +2,7 @@
   <Transition name="side">
     <div v-if="show" class="root">
       <div class="img-box">
-        <img
-          class="object-cover h-full w-full object-center"
-          :src="user.photo"
-          alt=""
-        />
+        <ImgView class="h-full w-full" :file="{ url: user.photo }" alt="" />
         <div class="title-box">
           <h6 class="text-secondary text-2xl">
             {{ user.full_name }}
@@ -29,6 +25,8 @@
 </template>
 
 <script>
+import ImgView from "@/components/UI/ImgView.vue";
+
 export default {
   props: {
     user: {
@@ -40,6 +38,7 @@ export default {
       required: true,
     },
   },
+  components: { ImgView },
 };
 </script>
 
@@ -48,7 +47,7 @@ export default {
   @apply p-4 border-l 
   bg-base-200 flex-[0.5] flex flex-col gap-4
   border-base-content/20 
-  min-w-[200px] max-w-[350px];
+  min-w-[200px] max-w-[400px];
 }
 
 .img-box {
@@ -58,7 +57,8 @@ export default {
 
 .img-box::before {
   content: "";
-  @apply absolute inset-0 bg-gradient-to-t 
+  @apply absolute z-10 pointer-events-none
+  inset-0 bg-gradient-to-t 
   from-[rgba(0,0,0,0.65)] via-30% 
   via-transparent to-transparent;
 }

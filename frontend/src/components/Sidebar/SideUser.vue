@@ -114,7 +114,7 @@ export default {
   relative md:gap-3;
 }
 
-.photo-edit {
+:deep(.photo-edit) {
   @apply md:w-20 relative z-[100];
 }
 

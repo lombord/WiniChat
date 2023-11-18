@@ -1,20 +1,21 @@
 <template>
-  <div @click="selectImg" class="root">
-    <input
-      ref="imgInput"
-      @input="changed"
-      accept=".png, .jpg, .jpeg, .gif"
-      class="img-input"
-      type="file"
-    />
-    <img :src="src" class="img-view" />
-    <div class="img-overlay">
-      <i class="fa-solid fa-plus"></i>
-    </div>
+  <div>
+    <FileInput @selected="selected" accept=".png, .jpg, .jpeg, .gif">
+      <template #default="{ callback }">
+        <div :class="$attrs.class" class="root" @click="callback">
+          <img :src="src" class="img-view" />
+          <div class="img-overlay">
+            <i class="fa-solid fa-plus"></i>
+          </div>
+        </div>
+      </template>
+    </FileInput>
   </div>
 </template>
 
 <script>
+import FileInput from "./FileInput.vue";
+
 export default {
   props: {
     src: {
@@ -23,19 +24,18 @@ export default {
     },
   },
   methods: {
-    selectImg() {
-      const ev = new MouseEvent("click");
-      this.$refs.imgInput.dispatchEvent(ev);
-    },
-    changed(e) {
-      this.$emit("selected", e.target.files[0]);
+    selected(files) {
+      this.$emit("selected", files[0]);
     },
   },
+  inheritAttrs: false,
+  emits: ["selected"],
+  components: { FileInput },
 };
 </script>
 
 <style scoped>
-.root {
+:deep(.root) {
   @apply relative rounded-full 
   overflow-hidden 
   aspect-square
@@ -48,10 +48,6 @@ export default {
   @apply w-full object-cover object-center block aspect-square;
 }
 
-.img-input {
-  @apply hidden;
-}
-
 .img-overlay {
   @apply opacity-0 transition absolute 
   flex justify-center items-center
@@ -62,7 +58,7 @@ export default {
   backdrop-blur-[1px];
 }
 
-.root:is(:hover, :focus) > .img-overlay {
+:deep(.root:is(:hover, :focus)) > .img-overlay {
   @apply opacity-100;
 }
 </style>

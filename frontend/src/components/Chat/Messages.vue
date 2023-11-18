@@ -80,7 +80,6 @@ export default {
 .date-badge {
   @apply text-base p-3 
   bg-opacity-60 text-white border-none
-  drop-shadow
-  ;
+  drop-shadow;
 }
 </style>

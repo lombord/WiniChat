@@ -10,6 +10,18 @@
         <time class="text-xs opacity-50">{{ createdTime }}</time>
       </div>
       <div class="chat-bubble break-words max-w-lg">
+        <template v-if="files">
+          <ImgView
+            v-if="files.file_type == 'image'"
+            :file="files"
+            class="my-2 max-h-96"
+          />
+          <VideoView
+            v-if="files.file_type == 'video'"
+            :src="files.url"
+            class="my-2 max-h-96"
+          />
+        </template>
         {{ message.content }}
         <span
           v-if="!isPosted"
@@ -22,6 +34,8 @@
 
 <script>
 import moment from "moment";
+import ImgView from "@/components/UI/ImgView.vue";
+import VideoView from "@/components/UI/VideoView.vue";
 
 export default {
   props: {
@@ -33,9 +47,6 @@ export default {
       type: Object,
       required: true,
     },
-    sibling: {
-      type: Object,
-    },
   },
   computed: {
     isSession() {
@@ -43,6 +54,11 @@ export default {
         return this.$session.user.id === this.owner.id;
       } catch (err) {}
     },
+
+    files() {
+      return this.message.files;
+    },
+
     chatCls() {
       return this.isSession ? "chat-end" : "chat-start";
     },
@@ -55,20 +71,12 @@ export default {
       return this.created.format("LT");
     },
 
-    
-
-    siblingDay() {
-      return moment(this.sibling.created).day();
-    },
-
-    showSep() {
-      return !this.sibling || this.created.day() != this.siblingDay;
-    },
-
     isPosted() {
       return this.message.id !== undefined;
     },
   },
+
+  components: { ImgView, VideoView },
 };
 </script>
 
