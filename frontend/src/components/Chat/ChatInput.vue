@@ -3,7 +3,7 @@
     <div v-if="tmpFile.url" class="prev-box">
       <div class="prev-wrap">
         <img
-          class="max-h-[inherit] h-full object-center rounded-xl object-cover"
+          class="max-h-[inherit] h-full min-w-[120px] object-center rounded-xl object-cover"
           v-if="tmpFile.file_type == 'image'"
           :src="tmpFile.url"
           alt=""
@@ -50,7 +50,16 @@
                 class="context-m"
                 v-model:show="show"
                 :menu="menu"
-              />
+              >
+                <template #image>
+                  <i class="fa-solid fa-images"></i>
+                  <span class="hidden md:inline-block">image</span>
+                </template>
+                <template #video>
+                  <i class="fa-solid fa-film"></i>
+                  <span class="hidden md:inline-block">video</span>
+                </template>
+              </ContextMenu>
             </template>
           </FileInput>
           <button
@@ -90,8 +99,8 @@ export default {
     },
     menu() {
       return [
-        { label: "Image", cb: this.imageSelect },
-        { label: "Video", cb: this.videoSelect },
+        { label: "image", cb: this.imageSelect },
+        { label: "video", cb: this.videoSelect },
       ];
     },
   },

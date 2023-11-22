@@ -27,6 +27,7 @@ export default {
 
   async created() {
     const promise = this.$session.loadSession();
+
     await this.$session.animate(promise);
     this.loadRouter();
     this.loaded = true;

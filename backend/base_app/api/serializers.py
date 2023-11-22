@@ -137,7 +137,7 @@ class ChatSerializer(S.ModelSerializer):
         """
         try:
             chat = pChat.messages.latest('created')
-            return MessageSerializer(chat).data
+            return MessageSerializer(chat, context=self.context).data
         except:
             return None
 

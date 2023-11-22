@@ -14,9 +14,14 @@
         >
           <slot> </slot>
         </div>
-        <button @click="$emit('update:show', false)" class="btn close-btn">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
+      </div>
+      <div class="buttons-wrap">
+        <div class="buttons-box">
+          <slot name="buttons"></slot>
+          <button @click="$emit('update:show', false)" class="btn">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
       </div>
     </div>
   </Transition>
@@ -40,7 +45,7 @@ export default {
 
 <style scoped>
 .modal-root {
-  @apply fixed inset-0 z-[999] 
+  @apply fixed inset-0 z-[1000] 
   overflow-hidden overflow-y-auto;
 }
 .modal-wrap {
@@ -51,10 +56,24 @@ export default {
   min-h-screen;
 }
 
+.buttons-wrap {
+  @apply absolute right-2 top-2 bottom-0 pointer-events-none;
+}
+
+.buttons-box {
+  @apply flex gap-2 
+  items-center sticky top-2
+  pointer-events-auto;
+}
+
 .close-btn {
-  @apply py-3 px-3.5 rounded-full text-white
-  btn-outline opacity-80 hover:opacity-100
-  absolute right-2 top-2;
+  @apply py-3.5 btn-square text-lg rounded-full text-white
+  btn-outline opacity-80 hover:opacity-100;
+}
+
+.buttons-box > *,
+.buttons-box > :deep(*) {
+  @apply close-btn;
 }
 
 .modal-content {

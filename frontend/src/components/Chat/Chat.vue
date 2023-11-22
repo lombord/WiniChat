@@ -13,13 +13,13 @@
         <div class="">
           <button
             @click="showSide = !showSide"
-            class="btn p-0 btn-ghost rounded-full text-lg opacity-60 hover:opacity-100"
+            class="icon-btn py-2.5 px-3 opacity-60 hover:opacity-100"
           >
             <i
               v-if="!showSide"
-              class="bi bi-layout-sidebar-inset-reverse py-2 px-3.5"
+              class="bi bi-layout-sidebar-inset-reverse py-0.5"
             ></i>
-            <i v-else class="fa-solid py-2.5 px-3 fa-xmark"></i>
+            <i v-else class="fa-solid fa-xmark"></i>
           </button>
         </div>
       </div>
@@ -44,7 +44,7 @@
             @click="scrollBottom({ behavior: 'smooth' })"
             class="btn to-bottom"
           >
-            <i class="fa-solid fa-arrow-down"></i>
+            <i class="fa-solid fa-chevron-down"></i>
           </button>
         </template>
       </ChatInput>
@@ -168,7 +168,7 @@ export default {
   },
 
   mixins: [fetchData],
-  emits: ["submit",],
+  emits: ["submit"],
   components: { ChatInput, Messages, ChatSide },
 };
 </script>
@@ -197,7 +197,7 @@ export default {
 .chat-top {
   @apply sticky top-0 flex items-center justify-between
   bg-base-200/50 backdrop-blur-3xl px-4 border-b
-  z-[100] py-2 shrink-0
+  z-[10] py-2 shrink-0
   border-base-content/10;
 }
 

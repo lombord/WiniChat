@@ -1,5 +1,5 @@
 <template>
-  <div class="root" v-if="show">
+  <div @click.stop.prevent class="root" v-if="show">
     <div class="buttons" v-for="(item, i) in menu" :key="i">
       <button
         @click="selected(item)"
@@ -25,6 +25,12 @@ export default {
       type: Boolean,
       required: true,
     },
+  },
+
+  updated() {
+    document.addEventListener("click", () => this.$emit("update:show", false), {
+      once: true,
+    });
   },
 
   methods: {

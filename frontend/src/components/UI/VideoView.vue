@@ -1,7 +1,7 @@
 <template>
   <div
     @fullscreenchange="updateFS"
-    class="root-box"
+    class="root-box z-0"
     :class="{ 'full-screen': fullScreen }"
   >
     <video
@@ -10,13 +10,35 @@
       @timeupdate="timeChanged"
       @durationchange="durationChanged"
       @volumechange="volumeChanged"
+      @progress="calcProgress"
+      @seeking="loading = true"
+      @waiting="loading = true"
+      @loadeddata="loading = false"
+      @playing="loading = false"
+      @seeked="loading = false"
+      poster="@/assets/images/black.jpg"
       ref="videoElm"
       class="video-tag"
       :src="src"
     ></video>
+    <div
+      class="absolute right-2 top-2 z-10 hover:opacity-100"
+      :class="{ 'opacity-0': playing }"
+    >
+      <button
+        @click="$session.download(src, file.file_name)"
+        class="icon-btn text-xl py-2.5"
+      >
+        <i class="bi bi-cloud-download"></i>
+      </button>
+    </div>
     <div @click="toggleState" class="toggle-box">
-      <button class="btn toggle-btn" :class="{ 'toggle-visible': paused }">
+      <button
+        class="btn toggle-btn"
+        :class="{ 'toggle-visible': paused, 'load-anim': loading }"
+      >
         <i v-if="ended" class="fa-solid fa-rotate-right"></i>
+        <i v-else-if="loading" class="fa-solid fa-spinner fa-spin-pulse"></i>
         <i v-else-if="paused" class="fa-solid fa-play"></i>
         <i v-else class="fa-solid fa-pause"></i>
       </button>
@@ -30,7 +52,8 @@
           :max="duration"
           :range="10"
           v-model="currentTime"
-          class="w-full"
+          :style="{ '--buffered': buffered }"
+          class="video-range"
         />
         <div class="bottom-items">
           <div>
@@ -38,25 +61,27 @@
           </div>
           <div class="center-items-root">
             <div class="pointer-events-auto">
-              <button @click="rewind(-5)" class="media-btn btn">
+              <button @click="rewind(-5)" class="icon-btn">
                 <i class="fa-solid fa-clock-rotate-left"></i>
               </button>
               <button
                 @click="toggleState"
-                class="media-btn btn px-3 py-2.5 text-2xl"
+                class="icon-btn px-3 py-2.5 text-2xl"
               >
                 <i v-if="paused" class="fa-solid fa-play"></i>
                 <i v-else class="fa-solid fa-pause px-[1.5px]"></i>
               </button>
-              <button @click="rewind(5)" class="media-btn btn">
+              <button @click="rewind(5)" class="icon-btn">
                 <i class="fa-solid fa-clock-rotate-left fa-flip-horizontal"></i>
               </button>
             </div>
           </div>
           <div class="flex">
             <div class="vol-box">
-              <button @click="toggleMute" class="media-btn btn p-2 py-2.5">
-                <i v-if="muted" class="fa-solid fa-volume-xmark"></i>
+              <button @click="toggleMute" class="icon-btn p-2 py-2.5">
+                <i v-if="muted || !volume" class="fa-solid fa-volume-xmark"></i>
+                <i v-else-if="volume <= 20" class="fa-solid fa-volume-off"></i>
+                <i v-else-if="volume <= 60" class="fa-solid fa-volume-low"></i>
                 <i v-else class="fa-solid fa-volume-high"></i>
               </button>
               <RangeSlider
@@ -66,7 +91,7 @@
                 :max="100"
               />
             </div>
-            <button @click="toggleFullScreen" class="media-btn btn">
+            <button @click="toggleFullScreen" class="icon-btn">
               <i
                 v-if="fullScreen"
                 class="fa-solid fa-compress px-[0.15rem]"
@@ -90,16 +115,26 @@ export default {
     currentTime: 0,
     duration: 0,
     fullScreen: false,
+    loading: false,
+    buffered: 0,
   }),
 
   props: {
-    src: {
-      type: String,
+    file: {
+      type: Object,
       required: true,
     },
   },
 
   computed: {
+    src() {
+      return this.file.url;
+    },
+
+    file_name() {
+      return this.file.file_name || this.src.split("/").reverse()[0];
+    },
+
     videoElm() {
       return this.$refs.videoElm;
     },
@@ -219,6 +254,18 @@ export default {
       this.fullScreen = document.fullscreenElement;
     },
 
+    calcProgress() {
+      if (this.duration <= 0) return;
+      const { buffered, currentTime } = this.videoElm;
+      for (let i = 0; i < buffered.length; i++) {
+        let pos = buffered.length - 1 - i;
+        if (buffered.start(pos) <= currentTime) {
+          this.buffered = ((buffered.end(pos) + 4) * 100) / this.duration;
+          return;
+        }
+      }
+    },
+
     async toggleFullScreen() {
       if (!document.fullscreenElement) {
         await this.$el.requestFullscreen();
@@ -253,7 +300,12 @@ export default {
 
 .full-screen {
   @apply fixed rounded-none bg-black m-0
+  text-lg
   inset-0 max-h-none z-[1000] !important;
+}
+
+.full-screen .icon-btn {
+  @apply text-2xl !important;
 }
 
 /* Toggle btn styles */
@@ -282,6 +334,14 @@ export default {
   animation-fill-mode: backwards;
   animation-direction: reverse;
   animation-delay: 0s;
+}
+
+.load-anim {
+  @apply animate-none;
+}
+
+.load-anim::after {
+  @apply w-[70%] text-[inherit];
 }
 
 @keyframes fade {
@@ -326,8 +386,17 @@ export default {
   @apply my-2;
 }
 
-.media-btn {
-  @apply btn-ghost text-lg p-2.5 rounded-full;
+.video-range {
+  @apply w-full;
+  --color2: theme(colors.white / 90%);
+  --color3: theme(colors.white/ 60%);
+  --buffered: 0;
+  background: linear-gradient(
+    to right,
+    var(--color1) calc(var(--percent) * 1% + 2px),
+    var(--color2) calc(var(--percent) * 1%) calc(var(--buffered) * 1%),
+    var(--color3) calc(var(--buffered) * 1%)
+  );
 }
 
 .center-items-root {

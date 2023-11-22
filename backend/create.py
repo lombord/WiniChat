@@ -11,8 +11,6 @@ from base_app.models import PMessage, User, PChat
 
 fake = Faker()
 
-# print(*(fake. for i in range(100)), sep='\n')
-
 
 def generate_users(n: int):
     pattern = compile(r'[^\w\d]+')

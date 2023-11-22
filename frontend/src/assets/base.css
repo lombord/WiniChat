@@ -68,6 +68,14 @@ a {
   @apply py-2.5 px-4;
 }
 
+.icon-btn {
+  @apply btn;
+}
+
+.icon-btn {
+  @apply btn-ghost text-lg p-2.5 rounded-full;
+}
+
 .tflex {
   @apply flex flex-wrap gap-2 items-center;
 }
@@ -84,6 +92,11 @@ a {
   aspect-square
   max-w-full
   object-center;
+}
+
+/* bootstrap custom */
+.bi::before {
+  @apply block;
 }
 
 /* Scroll bar Styles */

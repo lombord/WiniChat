@@ -18,7 +18,7 @@
           />
           <VideoView
             v-if="files.file_type == 'video'"
-            :src="files.url"
+            :file="files"
             class="my-2 max-h-96"
           />
         </template>

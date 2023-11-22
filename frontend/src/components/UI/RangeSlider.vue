@@ -58,8 +58,8 @@ export default {
   --percent: 0;
   background: linear-gradient(
     to right,
-    var(--color1) calc(var(--percent) * 1%),
-    var(--color2) calc(var(--percent) * 1% + 2px)
+    var(--color1) calc(var(--percent) * 1% + 2px),
+    var(--color2) calc(var(--percent) * 1%)
   );
 }
 

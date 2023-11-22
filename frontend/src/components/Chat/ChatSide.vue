@@ -17,7 +17,7 @@
       </div>
       <div class="px-2 py-5 bg-base-300 rounded-xl">
         <div class="break-words p-1 text-center italic">
-          {{ user.bio }}
+          {{ user.bio || "bio" }}
         </div>
       </div>
     </div>
