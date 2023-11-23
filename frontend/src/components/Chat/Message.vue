@@ -10,17 +10,8 @@
         <time class="text-xs opacity-50">{{ createdTime }}</time>
       </div>
       <div class="chat-bubble break-words max-w-lg">
-        <template v-if="files">
-          <ImgView
-            v-if="files.file_type == 'image'"
-            :file="files"
-            class="my-2 max-h-96"
-          />
-          <VideoView
-            v-if="files.file_type == 'video'"
-            :file="files"
-            class="my-2 max-h-96"
-          />
+        <template v-if="file">
+          <component :is="mediaComponent" :file="file" class="my-2 max-h-96" />
         </template>
         {{ message.content }}
         <span
@@ -34,8 +25,9 @@
 
 <script>
 import moment from "moment";
-import ImgView from "@/components/UI/ImgView.vue";
-import VideoView from "@/components/UI/VideoView.vue";
+import ImgView from "@/components/Media/ImgView.vue";
+import VideoView from "@/components/Media/VideoView.vue";
+import AudioView from "@/components/Media/AudioView.vue";
 
 export default {
   props: {
@@ -55,7 +47,7 @@ export default {
       } catch (err) {}
     },
 
-    files() {
+    file() {
       return this.message.files;
     },
 
@@ -74,9 +66,16 @@ export default {
     isPosted() {
       return this.message.id !== undefined;
     },
+
+    mediaComponent() {
+      const { file_type } = this.file;
+      if (file_type == "image") return "ImgView";
+      if (file_type == "video") return "VideoView";
+      if (file_type == "audio") return "AudioView";
+    },
   },
 
-  components: { ImgView, VideoView },
+  components: { ImgView, VideoView, AudioView },
 };
 </script>
 

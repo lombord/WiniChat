@@ -193,7 +193,7 @@ DOC_EXTS = {'doc', 'docx', 'txt', 'pdf', 'rtf', 'odt', 'ott', 'xls',
 exts_dict = {'image': IMAGE_EXTS, 'audio': AUDIO_EXTS,
              'video': VIDEO_EXTS, 'doc': DOC_EXTS}
 
-file_validator = FileExtensionValidator(IMAGE_EXTS | VIDEO_EXTS)
+file_validator = FileExtensionValidator(IMAGE_EXTS | AUDIO_EXTS | VIDEO_EXTS)
 
 
 def get_file_type(ext: str):

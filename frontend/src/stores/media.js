@@ -24,7 +24,9 @@ document.addEventListener("keydown", (e) => {
       component.toggleState();
       break;
     case "keyf":
-      component.toggleFullScreen();
+      try {
+        component.toggleFullScreen();
+      } catch (err) {}
       break;
     case "keym":
       component.toggleMute();

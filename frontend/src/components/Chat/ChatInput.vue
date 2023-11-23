@@ -16,7 +16,19 @@
             @loadedmetadata="rewindVideo"
             class="object-center object-cover h-full"
             :src="tmpFile.url"
+            muted
+            loop
+            autoplay
           />
+        </div>
+        <div
+          v-else-if="tmpFile.file_type == 'audio'"
+          class="p-14 rounded-2xl w-full bg-base-200/60 text-primary 
+          border-base-content/10
+          backdrop-blur-xl
+          border text-5xl"
+        >
+          <i class="bi bi-soundwave"></i>
         </div>
         <button
           @click="resetFile"
@@ -26,6 +38,7 @@
         </button>
       </div>
     </div>
+
     <div class="input-box">
       <slot name="top"></slot>
       <form class="s-form" @submit.prevent.stop="submitted">
@@ -54,6 +67,10 @@
                 <template #image>
                   <i class="fa-solid fa-images"></i>
                   <span class="hidden md:inline-block">image</span>
+                </template>
+                <template #audio>
+                  <i class="fa-solid fa-music"></i>
+                  <span class="hidden md:inline-block">audio</span>
                 </template>
                 <template #video>
                   <i class="fa-solid fa-film"></i>
@@ -100,6 +117,7 @@ export default {
     menu() {
       return [
         { label: "image", cb: this.imageSelect },
+        { label: "audio", cb: this.audioSelect },
         { label: "video", cb: this.videoSelect },
       ];
     },
@@ -114,6 +132,10 @@ export default {
       this.currentExt = [".png", ".jpg", ".jpeg", ".gif"];
       this.tmpFile.file_type = "image";
     },
+    audioSelect() {
+      this.currentExt = [".mp3", ".ogg", ".wav"];
+      this.tmpFile.file_type = "audio";
+    },
 
     videoSelect() {
       this.currentExt = [
@@ -121,10 +143,9 @@ export default {
         ".mkv",
         ".avi",
         ".mov",
+        ".wmv",
+        ".flv",
         ".webm",
-        ".m4v",
-        ".mpg",
-        ".mpeg",
       ];
       this.tmpFile.file_type = "video";
     },
@@ -216,7 +237,7 @@ export default {
 .context-m {
   @apply bg-black/5
   origin-bottom
-  -translate-y-36 right-10 w-[200px];
+  -translate-y-48 right-10 w-[200px];
 }
 
 .file-btn {

@@ -25,7 +25,7 @@
 </template>
 
 <script>
-import ImgView from "@/components/UI/ImgView.vue";
+import ImgView from "@/components/Media/ImgView.vue";
 
 export default {
   props: {
