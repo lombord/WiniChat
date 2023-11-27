@@ -7,6 +7,8 @@ export default {
     loaded: false,
     // loaded data list
     dataList: [],
+    // previous page url
+    previous: null,
     // next page url
     next: null,
     // defines if data is being fetched
@@ -16,6 +18,12 @@ export default {
     // AbortController controller object
     controller: null,
   }),
+
+  computed: {
+    fetchElm() {
+      return this.$refs.fetchElm;
+    },
+  },
 
   mounted() {
     if (this.fetch_on_mounted) {
@@ -38,12 +46,10 @@ export default {
       }
       const promise = this.$session.get(this.url, config);
       try {
-        const response = await this.$session.animate(
-          promise,
-          this.$refs.fetchElm
-        );
-        this.dataList = [];
-        this.update(response.data);
+        const { data } = await this.$session.animate(promise, this.fetchElm);
+        this.dataList = data.results || [];
+        this.previous = data.previous;
+        this.next = data.next;
       } catch (error) {}
     },
 
@@ -63,36 +69,41 @@ export default {
     },
 
     /**
-     * Called when dataList is being extended with a new data.
+     * Called to fetch partial-data from given url config.
      */
-    update({ results, next }) {
-      const len = this.dataList.length;
-      this.dataList.push(...results);
-      if (this.addCallback) {
-        this.dataList.slice(len).forEach(this.addCallback);
-      }
-      this.next = next;
-    },
-
-    /**
-     * Called to fetch a next url.
-     */
-    async loadNext() {
+    async fetchPart(url, cfg) {
       if (this._fetching) return;
       this._fetching = true;
-      const cfg = { url: this.next, baseURL: "" };
-      const prom = this.$session.request(cfg);
+      // await new Promise((r) => setTimeout(r, 1000));
+      const prom = this.$session.get(url, cfg);
       const response = await this.$session.animate(prom, 0, "xyz");
-      this.update(response.data);
       this._fetching = false;
+      return response.data;
     },
 
     /**
      * Called to signal to fetch the next url
      */
-    intersected() {
+    async loadNext(el) {
       if (!this.next) return true;
-      this.loadNext();
+      const { results, next } = await this.fetchPart(this.next);
+      this.dataList.push(...results);
+      this.next = next;
+      await this.$nextTick();
+      this.fetchElm.scrollTo({
+        top: this.fetchElm.scrollTop + el.offsetHeight + 100,
+      });
+    },
+
+    async loadPrevious() {
+      if (!this.previous) return true;
+      const { results, previous } = await this.fetchPart(this.previous);
+      const { scrollTop } = this.fetchElm;
+      this.dataList.unshift(...results);
+      this.previous = previous;
+      await this.$nextTick();
+      await this.$nextTick();
+      this.fetchElm.scrollTo({ top: scrollTop });
     },
   },
 };

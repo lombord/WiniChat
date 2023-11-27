@@ -86,6 +86,19 @@ class UserRegisterSerializer(S.ModelSerializer):
         return user
 
 
+class AbsoluteURLField(S.Field):
+
+    def __init__(self, **kwargs):
+        kwargs['read_only'] = True
+        kwargs.setdefault('source', '*')
+        super().__init__(**kwargs)
+
+    def to_representation(self, value):
+        abs_url = value.get_absolute_url()
+        request: HttpRequest = self.context.get('request')
+        return request.build_absolute_uri(abs_url)
+
+
 class FileSerializer(S.Serializer):
     url = S.FileField(source='file', default=None)
     file_type = S.CharField()
@@ -101,12 +114,14 @@ class MessageSerializer(S.ModelSerializer):
     Serializer for private messages
     """
     files = FileSerializer(source='*', read_only=True)
+    url = AbsoluteURLField()
 
     class Meta:
         model = PMessage
         fields = ('id', 'owner', 'content', 'file',
-                  'files', 'created', 'chat', 'edited')
-        read_only_fields = ('id', 'owner', 'chat', 'files')
+                  'files', 'seen', 'created', 'chat',
+                  'edited', 'url')
+        read_only_fields = ('id', 'owner', 'chat')
         extra_kwargs = {
             'file': {'write_only': True,
                      'required': False, 'default': None,

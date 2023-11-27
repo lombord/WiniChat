@@ -18,7 +18,7 @@
       >
         <Chats v-if="chats.length" v-bind="$attrs" :chats="chats">
           <template #bottom>
-            <div v-int="intersected" class="pt-10">
+            <div v-int="loadNext" class="pt-10">
               <div class="observer load-anim"></div>
             </div>
           </template>

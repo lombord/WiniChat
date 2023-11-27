@@ -1,23 +1,21 @@
 <template>
-  <div>
-    <div class="chat" :class="chatCls">
-      <div class="chat-image avatar">
-        <div class="round-img">
-          <img :src="owner.photo" class="w-12" />
-        </div>
-      </div>
-      <div v-if="isPosted" class="chat-footer">
-        <time class="text-xs opacity-50">{{ createdTime }}</time>
-      </div>
-      <div class="chat-bubble break-words max-w-lg">
-        <template v-if="file">
-          <component :is="mediaComponent" :file="file" class="my-2 max-h-96" />
-        </template>
+  <div class="chat" v-int.show="!isSession && !seen && markMessage">
+    <div class="chat-bubble">
+      <template v-if="file">
+        <component :is="mediaComponent" :file="file" class="my-2 max-h-96" />
+      </template>
+      <div class="message">
         {{ message.content }}
-        <span
-          v-if="!isPosted"
-          class="load-anim align-middle py-1 px-2 ml-2"
-        ></span>
+      </div>
+      <div class="h-3 flex gap-0.5 justify-end items-center">
+        <span v-if="!isPosted" class="load-anim align-middle p-3 ml-2"></span>
+        <template v-else>
+          <time class="text-xs opacity-80">{{ createdTime }}</time>
+          <span v-if="isSession" class="text-lg align-bottom opacity-80">
+            <i v-if="seen" class="bi bi-check2-all"></i>
+            <i v-else class="bi bi-check2"></i>
+          </span>
+        </template>
       </div>
     </div>
   </div>
@@ -35,20 +33,22 @@ export default {
       type: Object,
       required: true,
     },
+    isSession: {
+      type: Boolean,
+      required: true,
+    },
     message: {
       type: Object,
       required: true,
     },
   },
   computed: {
-    isSession() {
-      try {
-        return this.$session.user.id === this.owner.id;
-      } catch (err) {}
-    },
-
     file() {
       return this.message.files;
+    },
+
+    url() {
+      return this.message.url;
     },
 
     chatCls() {
@@ -67,6 +67,14 @@ export default {
       return this.message.id !== undefined;
     },
 
+    seen() {
+      return this.message.seen;
+    },
+
+    editPattern() {
+      return `message_${this.message.id}_edit`;
+    },
+
     mediaComponent() {
       const { file_type } = this.file;
       if (file_type == "image") return "ImgView";
@@ -75,16 +83,44 @@ export default {
     },
   },
 
+  created() {
+    this.$session.socket.onChat(this.editPattern, this.messageUpdate);
+  },
+
+  unmounted() {
+    this.$session.socket.removeChatEvent(this.editPattern, this.messageUpdate);
+  },
+
+  methods: {
+    async markMessage() {
+      await this.$session.patch(this.url, { seen: true });
+      const data = {
+        event: "edit_message",
+        chat_id: this.message.chat,
+        message_id: this.message.id,
+        data: { seen: true },
+      };
+      this.$session.socket.send(data);
+      this.message.seen = true;
+      return true;
+    },
+
+    messageUpdate(data) {
+      Object.assign(this.message, data);
+    },
+  },
+
   components: { ImgView, VideoView, AudioView },
 };
 </script>
 
 <style scoped>
-.chat-end .chat-bubble {
-  @apply chat-bubble-primary;
+.chat {
+  @apply py-0;
 }
-.chat-start .chat-bubble {
-  @apply chat-bubble-secondary;
+
+.chat-bubble {
+  @apply break-words max-w-lg;
 }
 
 .load-anim::after {

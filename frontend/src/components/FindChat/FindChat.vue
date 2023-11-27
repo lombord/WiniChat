@@ -4,7 +4,7 @@
     <div ref="fetchElm" class="overflow-y-auto flex-1 pr-1">
       <QPeople @chosen="startChat" v-if="dataList.length" :people="dataList">
         <template #bottom>
-          <div v-int="intersected" class="pt-20">
+          <div v-int="loadNext" class="pt-20">
 
             <div :key="query || 0" class="load-anim observer"></div>
           </div>

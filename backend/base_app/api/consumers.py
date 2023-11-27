@@ -28,7 +28,7 @@ class ChatConsumerMixin:
         self.joint_chats = {}
         super().__init__(*args, **kwargs)
 
-    async def send_chat(self, chat_id, data: dict):
+    async def send_chat(self, chat_id, data: dict, **kwargs):
         """
         Controls send_chat event.
         Sends a data if user has joint the chat
@@ -89,6 +89,14 @@ class ChatConsumerMixin:
         del self.joint_chats[chat_id]
         await self.leave_layer(self.chat_p % chat_id)
         print("%s left the chat: %s" % (self.user, chat_id))
+
+    async def edit_message(self, chat_id, message_id, data, **kwargs):
+        chat = await self.get_chat(chat_id)
+        assert await DSA(chat.messages.filter(pk=message_id).exists)()
+        group = self.chat_p % chat_id
+        await self.send_chat_event(group,
+                                   'message_%s_edit' % message_id,
+                                   data, exclude=True)
 
     @DSA
     def get_chat(self, chat_id):

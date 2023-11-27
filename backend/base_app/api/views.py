@@ -1,6 +1,8 @@
-from django.db.models import Max, F
+from django.http import HttpRequest, HttpResponseRedirect
+from django.db.models import Max, F, Min, Q
 from rest_framework import generics as G
 from rest_framework.pagination import LimitOffsetPagination
+
 
 from ..models import User
 
@@ -82,6 +84,23 @@ class ChatAPIView(G.ListCreateAPIView):
             self._chat = G.get_object_or_404(
                 user.get_chats(), pk=self.kwargs.get('pk'))
         return self._chat
+
+    def list(self, request: HttpRequest, *args, **kwargs):
+        qp = request.GET
+        offset, limit = qp.get('offset'), qp.get('limit')
+        if (offset is None and limit is None):
+            messages = self.chat.messages
+            created = (messages.filter(
+                ~Q(owner=self.request.user), seen=True)
+                .aggregate(max=Max('edited')).get('max'))
+            if not created:
+                created = messages.values_list('created', flat=True).last()
+            if created:
+                offset = messages.filter(created__gt=created).count()
+                qp = type(qp)(qp.urlencode(), mutable=True)
+                qp['offset'] = offset
+                return HttpResponseRedirect(f"{request.path_info}?{qp.urlencode()}")
+        return super().list(request, *args, **kwargs)
 
     def get_queryset(self):
         return self.chat.messages.all()

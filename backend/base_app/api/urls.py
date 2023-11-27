@@ -1,5 +1,6 @@
 from django.urls import include, path
 
+from rest_framework.routers import SimpleRouter
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -7,7 +8,11 @@ from rest_framework_simplejwt.views import (
 )
 
 from . import views as V
+from . import viewsets as VS
 
+router = SimpleRouter()
+router.register('messages', VS.MessageViewSet,
+                basename='messages')
 urlpatterns = [
     # urls related with token
     path('token/', include([
@@ -24,3 +29,5 @@ urlpatterns = [
         path('<int:pk>/', V.ChatAPIView.as_view(), name='chat'),
     ])),
 ]
+
+urlpatterns += router.urls

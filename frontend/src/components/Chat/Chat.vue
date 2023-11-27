@@ -25,14 +25,19 @@
       </div>
       <div class="messages-main">
         <Messages
-          @vue:mounted="scrollBottom"
+          @vue:mounted="scrollBottom()"
           v-if="dataList.length"
           :messages="dataList"
           :user="user"
           :companion="companion"
         >
+          <template #top>
+            <div v-int="loadPrevious" class="pt-20">
+              <div class="load-anim observer"></div>
+            </div>
+          </template>
           <template #bottom>
-            <div v-int="intersected" class="pb-32">
+            <div v-int="loadNext" class="pb-32">
               <div class="load-anim observer"></div>
             </div>
           </template>
@@ -40,12 +45,16 @@
       </div>
       <ChatInput :message="message" @submit="postMsg">
         <template v-if="showScroll" #top>
-          <button
-            @click="scrollBottom({ behavior: 'smooth' })"
-            class="btn to-bottom"
+          <div
+            class="absolute bottom-20 inset-x-0 pointer-events-none text-center"
           >
-            <i class="fa-solid fa-chevron-down"></i>
-          </button>
+            <button
+              @click="scrollBottom({ behavior: 'smooth' })"
+              class="btn to-bottom"
+            >
+              <i class="fa-solid fa-chevron-down"></i>
+            </button>
+          </div>
         </template>
       </ChatInput>
     </div>
@@ -66,6 +75,7 @@ export default {
     message: null,
     showScroll: false,
     showSide: false,
+    scrollTop: 0,
   }),
 
   props: {
@@ -91,9 +101,11 @@ export default {
     url() {
       return this.chat.url;
     },
+
     avatarCls() {
       return this.companion.status ? "online" : "offline";
     },
+
     socket() {
       return this.$session.socket;
     },
@@ -102,6 +114,10 @@ export default {
   created() {
     this.socket.joinChat(this.chat.id, this.addMsg);
     this.resetMsg();
+  },
+
+  mounted() {
+    this.scrollTop = this.fetchElm.scrollTop;
   },
 
   beforeUnmount() {
@@ -152,11 +168,15 @@ export default {
     },
 
     scrollBottom(options) {
-      const el = this.$refs.fetchElm;
-      el.scrollTo({ top: el.scrollHeight, ...options });
+      this.fetchElm.scrollTo({ top: this.fetchElm.scrollHeight, ...options });
+    },
+
+    scrollTo(height) {
+      this.fetchElm.scrollTo({ top: height });
     },
 
     scrolled({ target: el }) {
+      this.scrollTop = el.scrollTop;
       this.showScroll = !(
         Math.abs(el.scrollHeight - el.scrollTop - el.clientHeight) < 150
       );
@@ -164,7 +184,7 @@ export default {
   },
 
   activated() {
-    this.scrollBottom();
+    this.scrollTo(this.scrollTop);
   },
 
   mixins: [fetchData],
@@ -188,10 +208,10 @@ export default {
 }
 
 .to-bottom {
-  @apply btn-primary absolute py-4
-  rounded-full 
-  opacity-60 hover:opacity-100
-  bottom-20 right-2 btn-square;
+  @apply btn-primary  py-4
+  rounded-full opacity-60
+  pointer-events-auto
+  hover:opacity-100 btn-square;
 }
 
 .chat-top {
@@ -206,8 +226,7 @@ export default {
 }
 
 .messages-main {
-  @apply flex-1 px-4 sm:px-5 
-  md:px-6 xl:px-8;
+  @apply flex-1 px-4;
 }
 
 .observer {

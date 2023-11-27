@@ -197,7 +197,7 @@ file_validator = FileExtensionValidator(IMAGE_EXTS | AUDIO_EXTS | VIDEO_EXTS)
 
 
 def get_file_type(ext: str):
-    ext = ext[1:].lower()
+    ext = ext.lstrip('.')
     for k, v in exts_dict.items():
         if ext in v:
             return k
@@ -228,11 +228,15 @@ class PMessage(models.Model):
                             null=True, blank=True)
     file_type = models.CharField(
         _('File type'), max_length=50, null=True, blank=True)
+    seen = models.BooleanField(default=False)
     created = models.DateTimeField(auto_now_add=True)
     edited = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = '-created',
+
+    def get_absolute_url(self):
+        return reverse("messages-detail", kwargs={"pk": self.pk})
 
     def __str__(self) -> str:
         return f"{self.chat}:{self.owner} -> {self.content[:50]}"
