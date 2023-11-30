@@ -1,5 +1,5 @@
 <template>
-  <div @click.stop.prevent class="root" v-if="show">
+  <div @mouseup.stop.prevent class="root" v-if="show">
     <div class="buttons" v-for="(item, i) in menu" :key="i">
       <button
         @click="selected(item)"
@@ -16,6 +16,7 @@
 
 <script>
 export default {
+  expose: ["$el"],
   props: {
     menu: {
       type: Array,
@@ -28,9 +29,11 @@ export default {
   },
 
   updated() {
-    document.addEventListener("click", () => this.$emit("update:show", false), {
-      once: true,
-    });
+    document.addEventListener(
+      "mouseup",
+      () => this.$emit("update:show", false),
+      { once: true }
+    );
   },
 
   methods: {
@@ -45,13 +48,14 @@ export default {
 
 <style scoped>
 .root {
-  @apply absolute p-3 bg-base-100/20 
+  @apply absolute p-2.5 bg-base-300/20 
   rounded-xl overflow-hidden 
   flex flex-col gap-2 shadow
   z-50 backdrop-blur-xl;
 }
 
 .menu-btn {
-  @apply btn glass w-full py-4;
+  @apply btn bg-base-100/50 
+  border-base-content/[10%] w-full py-4;
 }
 </style>

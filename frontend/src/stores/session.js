@@ -21,9 +21,9 @@ class SessionSocket {
     // WebSocket object
     this._socket = new WebSocket(`${this.endpoint}?token=${token}`);
     // chat event listeners
-    this.chatEvents = {};
+    this.chatEvents = new Map();
     // User event listeners
-    this.userEvents = {};
+    this.userEvents = new Map();
     // on message call base message handler method
     this.onWS("message", (...args) => this.onMessage(...args));
   }
@@ -62,7 +62,7 @@ class SessionSocket {
    * Base method to call listeners of an event from dict.
    */
   callListeners(dict, event, data) {
-    const listeners = dict[event];
+    const listeners = dict.get(event);
     if (!listeners) return;
     for (const cb of listeners) cb(data);
   }
@@ -81,8 +81,8 @@ class SessionSocket {
     this.callListeners(this.chatEvents, event, data);
   }
 
-  _addOrCreate(obj, key, value) {
-    (obj[key] || (obj[key] = new Set())).add(value);
+  _addOrCreate(dict, key, value) {
+    (dict.get(key) || dict.set(key, new Set()).get(key)).add(value);
   }
 
   /**
@@ -134,8 +134,12 @@ class SessionSocket {
   // base method to remove an event CB from dict
   _removeEvent(dict, event, callback) {
     try {
-      dict[event].remove(callback);
-    } catch (error) {}
+      const listeners = dict.get(event);
+      if (listeners.size > 1) listeners.delete(callback);
+      else dict.delete(event);
+    } catch (err) {
+      console.log(err);
+    }
   }
 
   // method to remove user event CB
@@ -153,9 +157,11 @@ class SessionSocket {
    * @param {Any} chat_id - chat to join.
    * @param {Function} callback - callback to call when sent a new message.
    */
-  joinChat(chat_id, callback) {
+  joinChat(chat_id, newMsgCB, updateMsgCB, deleteMsgCB) {
     this.send({ event: "join_chat", chat_id });
-    this.onChat(`${chat_id}_message`, callback);
+    newMsgCB && this.onChat(`chat_${chat_id}:new`, newMsgCB);
+    updateMsgCB && this.onChat(`chat_${chat_id}:update`, updateMsgCB);
+    deleteMsgCB && this.onChat(`chat_${chat_id}:delete`, deleteMsgCB);
   }
 
   /**
@@ -163,9 +169,11 @@ class SessionSocket {
    * @param {Any} chat_id - chat to leave.
    * @param {Function} callback - cb used when joint the chat.
    */
-  leaveChat(chat_id, callback) {
+  leaveChat(chat_id) {
     this.send({ event: "leave_chat", chat_id });
-    this.removeChatEvent(`${chat_id}_message`, callback);
+    this.chatEvents.delete(`chat_${chat_id}:new`);
+    this.chatEvents.delete(`chat_${chat_id}:update`);
+    this.chatEvents.delete(`chat_${chat_id}:delete`);
   }
 
   // Base method to send message to server

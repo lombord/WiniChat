@@ -86,21 +86,24 @@ class ChatAPIView(G.ListCreateAPIView):
         return self._chat
 
     def list(self, request: HttpRequest, *args, **kwargs):
-        qp = request.GET
-        offset, limit = qp.get('offset'), qp.get('limit')
-        if (offset is None and limit is None):
-            messages = self.chat.messages
-            created = (messages.filter(
-                ~Q(owner=self.request.user), seen=True)
-                .aggregate(max=Max('edited')).get('max'))
-            if not created:
-                created = messages.values_list('created', flat=True).last()
-            if created:
-                offset = messages.filter(created__gt=created).count()
-                qp = type(qp)(qp.urlencode(), mutable=True)
-                qp['offset'] = offset
-                return HttpResponseRedirect(f"{request.path_info}?{qp.urlencode()}")
+        if not request.GET:
+            response = self.get_last_seen(request)
+            if response is not None:
+                return response
         return super().list(request, *args, **kwargs)
+
+    def get_last_seen(self, request: HttpRequest):
+        messages = self.chat.messages
+        if not messages.exists():
+            return
+        last = messages.values('owner_id', 'seen').latest('created')
+        if last['seen'] or last['owner_id'] == request.user.id:
+            return
+        created = (messages.filter(
+            ~Q(owner=request.user) & Q(seen=False))
+            .aggregate(min=Min('created')).get('min'))
+        offset = messages.filter(created__gt=created).count()
+        return HttpResponseRedirect(f"{request.path_info}?offset={offset}")
 
     def get_queryset(self):
         return self.chat.messages.all()

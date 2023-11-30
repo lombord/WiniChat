@@ -33,6 +33,18 @@ export default {
   },
 
   methods: {
+    firstAdd(data) {
+      this.dataList = data || [];
+    },
+
+    addNext(data) {
+      this.dataList.push(...data);
+    },
+
+    addPrevious(data) {
+      this.dataList.unshift(...data);
+    },
+
     /**
      * Base fetch function, fetches data from defined url
      * and updates dataList by fetched data.
@@ -47,7 +59,7 @@ export default {
       const promise = this.$session.get(this.url, config);
       try {
         const { data } = await this.$session.animate(promise, this.fetchElm);
-        this.dataList = data.results || [];
+        this.firstAdd(data.results);
         this.previous = data.previous;
         this.next = data.next;
       } catch (error) {}
@@ -87,11 +99,11 @@ export default {
     async loadNext(el) {
       if (!this.next) return true;
       const { results, next } = await this.fetchPart(this.next);
-      this.dataList.push(...results);
+      this.addNext(results);
       this.next = next;
       await this.$nextTick();
       this.fetchElm.scrollTo({
-        top: this.fetchElm.scrollTop + el.offsetHeight + 100,
+        top: this.fetchElm.scrollTop + el.offsetHeight + 10,
       });
     },
 
@@ -99,9 +111,8 @@ export default {
       if (!this.previous) return true;
       const { results, previous } = await this.fetchPart(this.previous);
       const { scrollTop } = this.fetchElm;
-      this.dataList.unshift(...results);
+      this.addPrevious(results);
       this.previous = previous;
-      await this.$nextTick();
       await this.$nextTick();
       this.fetchElm.scrollTo({ top: scrollTop });
     },

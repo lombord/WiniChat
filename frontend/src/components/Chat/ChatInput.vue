@@ -1,7 +1,22 @@
 <template>
   <div class="root-box">
-    <div v-if="tmpFile.url" class="prev-box">
-      <div class="prev-wrap">
+    <div v-if="editing || tmpFile.url" class="prev-box">
+      <div v-if="editing" class="edit-box">
+        <div class="flex gap-2 items-center">
+          <p class="text-primary rounded-full p-2 px-3 text-xl border border-base-content/20">
+            <span>
+              <i class="fa-solid fa-pen"></i>
+            </span>
+          </p>
+          <div class="">
+            {{ ogContent }}
+          </div>
+        </div>
+        <button @click="$emit('cancelEdit')" class="btn x-btn">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div v-else class="prev-wrap">
         <img
           class="max-h-[inherit] h-full min-w-[120px] object-center rounded-xl object-cover"
           v-if="tmpFile.file_type == 'image'"
@@ -23,17 +38,11 @@
         </div>
         <div
           v-else-if="tmpFile.file_type == 'audio'"
-          class="p-14 rounded-2xl w-full bg-base-200/60 text-primary 
-          border-base-content/10
-          backdrop-blur-xl
-          border text-5xl"
+          class="p-14 rounded-2xl w-full bg-base-200/60 text-primary border-base-content/10 backdrop-blur-xl border text-5xl"
         >
           <i class="bi bi-soundwave"></i>
         </div>
-        <button
-          @click="resetFile"
-          class="btn btn-secondary px-2 py-1.5 rounded-full absolute -top-2 -right-2"
-        >
+        <button @click="resetFile" class="btn x-btn">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
@@ -103,11 +112,16 @@ export default {
     show: false,
     currentExt: null,
     tmpFile: null,
+    ogContent: "",
   }),
   props: {
     message: {
       type: Object,
       required: true,
+    },
+    editing: {
+      type: Boolean,
+      default: false,
     },
   },
   computed: {
@@ -170,10 +184,21 @@ export default {
     },
 
     submitted() {
-      this.$emit("submit", this.tmpFile, this.resetFile);
+      if (this.editing) {
+        this.$emit("edited");
+      } else {
+        this.$emit("submit", this.tmpFile, this.resetFile);
+      }
     },
   },
-  emits: ["chosen", "selected", "submit"],
+
+  watch: {
+    editing(val) {
+      if (val) this.ogContent = this.message.content;
+    },
+  },
+
+  emits: ["submit", "cancelEdit", "edited"],
   components: { TInput, FileInput, ContextMenu },
 };
 </script>
@@ -184,7 +209,17 @@ export default {
 }
 
 .prev-box {
-  @apply p-2 flex max-w-4xl mx-auto;
+  @apply flex max-w-4xl mx-auto;
+}
+
+.x-btn {
+  @apply btn-secondary px-2 py-1.5 
+  rounded-full absolute -top-2 -right-2;
+}
+
+.edit-box {
+  @apply p-2.5 mb-0.5 bg-base-200/50 border border-base-content/5
+  backdrop-blur-xl w-full rounded-md relative;
 }
 
 .prev-wrap {

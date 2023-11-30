@@ -1,65 +1,76 @@
 <template>
-  <div class="root-div">
-    <div @scroll="scrolled" ref="fetchElm" class="main-div">
-      <div class="chat-top">
-        <div class="user-short">
-          <div class="avatar" :class="avatarCls">
-            <div class="round-img w-16">
-              <img :src="companion.photo" />
-            </div>
+  <div @scroll="scrolled" ref="fetchElm" class="main-div">
+    <div class="chat-top">
+      <div class="user-short">
+        <div class="avatar" :class="avatarCls">
+          <div class="round-img w-16">
+            <img :src="companion.photo" />
           </div>
-          <h5 class="text-primary">{{ username }}</h5>
         </div>
-        <div class="">
-          <button
-            @click="showSide = !showSide"
-            class="icon-btn py-2.5 px-3 opacity-60 hover:opacity-100"
-          >
-            <i
-              v-if="!showSide"
-              class="bi bi-layout-sidebar-inset-reverse py-0.5"
-            ></i>
-            <i v-else class="fa-solid fa-xmark"></i>
-          </button>
-        </div>
+        <h5 class="text-primary">{{ username }}</h5>
       </div>
-      <div class="messages-main">
-        <Messages
-          @vue:mounted="scrollBottom()"
-          v-if="dataList.length"
-          :messages="dataList"
-          :user="user"
-          :companion="companion"
+      <div>
+        <button
+          @click="$emit('update:showSide', !showSide)"
+          class="icon-btn py-2.5 px-3 opacity-60 hover:opacity-100"
         >
-          <template #top>
-            <div v-int="loadPrevious" class="pt-20">
-              <div class="load-anim observer"></div>
-            </div>
-          </template>
-          <template #bottom>
-            <div v-int="loadNext" class="pb-32">
-              <div class="load-anim observer"></div>
-            </div>
-          </template>
-        </Messages>
+          <i
+            v-if="!showSide"
+            class="bi bi-layout-sidebar-inset-reverse py-0.5"
+          ></i>
+          <i v-else class="fa-solid fa-xmark"></i>
+        </button>
       </div>
-      <ChatInput :message="message" @submit="postMsg">
-        <template v-if="showScroll" #top>
-          <div
-            class="absolute bottom-20 inset-x-0 pointer-events-none text-center"
-          >
-            <button
-              @click="scrollBottom({ behavior: 'smooth' })"
-              class="btn to-bottom"
-            >
-              <i class="fa-solid fa-chevron-down"></i>
-            </button>
+    </div>
+    <div class="messages-main">
+      <Messages
+        @vue:mounted="scrollBottom"
+        @removeMsg="removeMsg"
+        @editMsg="editMsg"
+        @messageSeen="chat.unread = Math.max(chat.unread - 1, 0)"
+        v-if="dataList.length"
+        :messages="dataList"
+        :user="user"
+        :companion="companion"
+      >
+        <template v-if="previous" #top>
+          <div v-int="loadPrevious" class="pt-20">
+            <div class="load-anim observer"></div>
           </div>
         </template>
-      </ChatInput>
+        <template v-if="next" #bottom>
+          <div v-int="loadNext" class="pb-32">
+            <div class="load-anim observer"></div>
+          </div>
+        </template>
+      </Messages>
     </div>
-
-    <ChatSide :user="companion" :show="showSide" />
+    <ChatInput
+      :editing="editing"
+      :message="message"
+      @submit="postMsg"
+      @cancelEdit="cancelEdit"
+      @edited="saveEdit"
+    >
+      <template v-if="showScroll" #top>
+        <div
+          class="absolute bottom-20 inset-x-0 pointer-events-none text-center"
+        >
+          <button
+            @click="scrollBottom({ behavior: 'smooth' })"
+            class="btn to-bottom"
+          >
+            <span
+              v-if="chat.unread"
+              class="absolute -top-2 text-base aspect-square h-6 grid content-center p-1 bg-secondary rounded-full"
+            >
+              {{ chat.unread }}
+            </span>
+            <i class="fa-solid fa-chevron-down"></i>
+          </button>
+        </div>
+      </template>
+    </ChatInput>
   </div>
 </template>
 
@@ -68,19 +79,23 @@ import fetchData from "@/mixins/fetchData.js";
 
 import Messages from "./Messages.vue";
 import ChatInput from "./ChatInput.vue";
-import ChatSide from "./ChatSide.vue";
 
 export default {
   data: () => ({
     message: null,
     showScroll: false,
-    showSide: false,
     scrollTop: 0,
+    editing: false,
+    saveCB: null,
   }),
 
   props: {
     chat: {
       type: Object,
+      required: true,
+    },
+    showSide: {
+      type: Boolean,
       required: true,
     },
   },
@@ -106,13 +121,25 @@ export default {
       return this.companion.status ? "online" : "offline";
     },
 
+    isFullScroll() {
+      return (
+        this.scrollTop + this.fetchElm.clientHeight >=
+        this.fetchElm.scrollHeight
+      );
+    },
+
     socket() {
       return this.$session.socket;
     },
   },
 
   created() {
-    this.socket.joinChat(this.chat.id, this.addMsg);
+    this.socket.joinChat(
+      this.chat.id,
+      this.addMsg,
+      this.updateMsg,
+      ({ message_id }) => this.removeMsg(message_id)
+    );
     this.resetMsg();
   },
 
@@ -121,7 +148,7 @@ export default {
   },
 
   beforeUnmount() {
-    this.socket.leaveChat(this.chat.id, this.addMsg);
+    this.socket.leaveChat(this.chat.id);
   },
 
   methods: {
@@ -130,7 +157,7 @@ export default {
       const data = this.message.file
         ? this.toFormData(this.message)
         : this.message;
-      const msg = this.addMsg(this.message);
+      const msg = this.addMsg(this.message, true);
       msg.files = tmpFile;
       this.resetMsg();
       resetCB();
@@ -161,10 +188,41 @@ export default {
       };
     },
 
-    addMsg(msg) {
+    addMsg(msg, scroll = false) {
+      if (this.previous) return;
       this.dataList.unshift(msg);
-      this.$nextTick(this.scrollBottom);
+      (scroll || this.isFullScroll) && this.$nextTick(this.scrollBottom);
       return this.dataList[0];
+    },
+
+    updateMsg({ message_id, data }) {
+      const msg = this.dataList.find(({ id }) => id == message_id);
+      msg && Object.assign(msg, data);
+    },
+
+    removeMsg(id) {
+      const idx = this.dataList.findIndex((msg) => msg.id == id);
+      idx >= 0 && this.dataList.splice(idx, 1);
+    },
+
+    async editMsg(msg, saveCB) {
+      this.cancelEdit();
+      await this.$nextTick();
+      this.editing = true;
+      this.saveCB = saveCB;
+      this.message = { ...msg };
+    },
+
+    cancelEdit() {
+      this.editing = false;
+      this.saveCB = null;
+      this.resetMsg();
+    },
+
+    saveEdit() {
+      const { content } = this.message;
+      this.saveCB(content);
+      this.cancelEdit();
     },
 
     scrollBottom(options) {
@@ -188,19 +246,14 @@ export default {
   },
 
   mixins: [fetchData],
-  emits: ["submit"],
-  components: { ChatInput, Messages, ChatSide },
+  components: { ChatInput, Messages },
 };
 </script>
 
 <style scoped>
-.root-div {
-  @apply flex h-full overflow-hidden;
-}
-
 .main-div {
-  @apply flex flex-col relative flex-1
-  overflow-y-auto h-full;
+  @apply flex flex-col relative
+  overflow-y-auto overflow-x-hidden h-full;
 }
 
 .main-div::-webkit-scrollbar-track {
@@ -210,6 +263,7 @@ export default {
 .to-bottom {
   @apply btn-primary  py-4
   rounded-full opacity-60
+  relative
   pointer-events-auto
   hover:opacity-100 btn-square;
 }

@@ -1,6 +1,7 @@
 from functools import wraps
 from channels.generic import websocket as WS
 from channels.db import database_sync_to_async as DSA
+from click import group
 
 
 def exclude_sender(method):
@@ -28,6 +29,12 @@ class ChatConsumerMixin:
         self.joint_chats = {}
         super().__init__(*args, **kwargs)
 
+    def validate_chat(self, chat_id):
+        group = self.chat_p % chat_id
+        # check if user is in the group
+        assert group in self.groups
+        return group
+
     async def send_chat(self, chat_id, data: dict, **kwargs):
         """
         Controls send_chat event.
@@ -37,12 +44,10 @@ class ChatConsumerMixin:
             data (dict): data to send
         """
 
-        group = self.chat_p % chat_id
-        # check if user is in the group
-        assert group in self.groups
+        group = self.validate_chat(chat_id)
 
         # send data to all sessions that are connected to the chat
-        await self.send_chat_event(group, '%s_message' % chat_id,
+        await self.send_chat_event(group, 'chat_%s:new' % chat_id,
                                    data.copy(), exclude=True)
 
         # notify companion incase they haven't joint the chat yet
@@ -91,12 +96,16 @@ class ChatConsumerMixin:
         print("%s left the chat: %s" % (self.user, chat_id))
 
     async def edit_message(self, chat_id, message_id, data, **kwargs):
-        chat = await self.get_chat(chat_id)
-        assert await DSA(chat.messages.filter(pk=message_id).exists)()
-        group = self.chat_p % chat_id
-        await self.send_chat_event(group,
-                                   'message_%s_edit' % message_id,
-                                   data, exclude=True)
+        group = self.validate_chat(chat_id)
+        await self.send_chat_event(group, 'chat_%s:update' % chat_id,
+                                   {'message_id': message_id,
+                                    'data': data}, exclude=True)
+
+    async def delete_message(self, chat_id, message_id, **kwargs):
+        group = self.validate_chat(chat_id)
+        await self.send_chat_event(group, 'chat_%s:delete' % chat_id,
+                                   {'message_id': message_id},
+                                   exclude=True)
 
     @DSA
     def get_chat(self, chat_id):

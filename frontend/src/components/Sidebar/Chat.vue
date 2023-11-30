@@ -10,16 +10,34 @@
       </div>
     </div>
     <div class="flex-1 truncate">
-      <h6 class="text-primary">
-        {{ companion.full_name }}
-      </h6>
-      <p v-if="latest" class="truncate">
-        {{ latest.content }}
-      </p>
+      <div class="flex gap-1 items-center">
+        <h6 class="text-primary flex-1">
+          {{ companion.full_name }}
+        </h6>
+        <p v-if="latest" class="text-sm">
+          {{ created }}
+        </p>
+      </div>
+      <div v-if="latest" class="flex items-center gap-1">
+        <p class="truncate flex-1">
+          {{ latest.content }}
+        </p>
+        <div
+          v-if="isSession || unread"
+          class="text-md p-1 min-w-[1.5rem] flex items-center justify-center
+          h-6 
+          rounded-full bg-primary/30 text-white"
+        >
+          <span v-if="isSession">
+            <i v-if="latest.seen" class="bi bi-check2-all"></i>
+            <i v-else class="bi bi-check2"></i>
+          </span>
+          <span v-else>
+            {{ unread }}
+          </span>
+        </div>
+      </div>
     </div>
-    <p v-if="latest" class="text-sm">
-      {{ created }}
-    </p>
   </div>
 </template>
 
@@ -49,6 +67,14 @@ export default {
 
     latest() {
       return this.chat.latest;
+    },
+
+    isSession() {
+      return this.latest.owner == this.$session.user.id;
+    },
+
+    unread() {
+      return this.chat.unread;
     },
 
     created() {
@@ -85,7 +111,7 @@ export default {
   beforeUnmount() {
     const { id } = this.companion;
     this.socket.leaveUser(id, this.userJoint, this.userLeft);
-    this.socket.removeUserEvent(`${id}_edit`, this.userEdit); 
+    this.socket.removeUserEvent(`${id}_edit`, this.userEdit);
   },
 
   methods: {
@@ -104,7 +130,7 @@ export default {
 
 <style scoped>
 .chat-box {
-  @apply flex gap-3 items-start py-2 
+  @apply flex gap-2 items-start py-2 
   cursor-pointer
   bg-base-300/80
   focus:bg-secondary/10

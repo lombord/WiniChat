@@ -1,7 +1,11 @@
 <template>
   <div class="py-2 flex flex-col-reverse">
     <slot name="top"></slot>
-    <div v-for="(messages, date) in msgGroup" :key="date" class="messages">
+    <div
+      v-for="(messages, date) in msgGroup"
+      :key="date"
+      class="messages gap-2"
+    >
       <template v-for="(context, i) in messages" :key="i">
         <div
           v-for="{ isSession, owner } in [getTmpObj(context[0])]"
@@ -11,11 +15,12 @@
           <div class="messages flex-1">
             <Message
               :class="isSession ? 'chat-end' : 'chat-start'"
-              :key="msg.id || i"
               v-for="(msg, i) in context"
+              :key="msg.id || i"
               :message="msg"
               :isSession="isSession"
               :owner="owner"
+              v-bind="$attrs"
             />
           </div>
           <div class="chat-image avatar sticky bottom-[4.5rem]">
@@ -25,7 +30,7 @@
           </div>
         </div>
       </template>
-      <div class="date-divider">
+      <div class="date-divider pointer-events-none">
         <span class="date-badge badge badge-primary">
           {{ divDate(date) }}
         </span>
@@ -99,6 +104,7 @@ export default {
     },
 
     isEndContext(msg1, msg2) {
+      msg1.owner || (msg1.owner = this.user.id);
       try {
         return msg1.owner !== msg2.owner;
       } catch (err) {
@@ -107,13 +113,15 @@ export default {
     },
   },
 
+  inheritAttrs: false,
+
   components: { Message },
 };
 </script>
 
 <style scoped>
 .messages {
-  @apply flex flex-col-reverse gap-1;
+  @apply flex flex-col-reverse gap-0.5;
 }
 
 .msg-context {
@@ -127,30 +135,32 @@ export default {
   @apply before:content-[0];
 }
 
-.msg-context .chat-end:deep(.chat-bubble) {
+.msg-context :deep(.chat-end .chat-bubble) {
   @apply chat-bubble-primary rounded-r-lg;
 }
 
-.msg-context .chat-start:deep(.chat-bubble) {
+.msg-context :deep(.chat-start .chat-bubble) {
   @apply chat-bubble-secondary rounded-l-lg;
 }
 
-.msg-context
-  .messages
-  > *:not(:first-child):last-child.chat-start:deep(.chat-bubble) {
+.msg-context .messages > *:last-child:deep(.chat-start .chat-bubble) {
   @apply rounded-tl-3xl;
 }
 .msg-context
   .messages
-  > *:not(:first-child):last-child.chat-end:deep(.chat-bubble) {
+  > *:not(:first-child):last-child:deep(.chat-end .chat-bubble) {
   @apply rounded-tr-3xl;
 }
 
-.msg-context .messages > *:first-child.chat-start:deep(.chat-bubble) {
+.msg-context .messages > *:first-child:deep(.chat-start .chat-bubble) {
   @apply rounded-bl-none;
 }
-.msg-context .messages > *:first-child.chat-end:deep(.chat-bubble) {
+.msg-context .messages > *:first-child:deep(.chat-end .chat-bubble) {
   @apply rounded-br-none;
+}
+
+.msg-context .messages > *:first-child:last-child:deep(.chat-bubble) {
+  @apply rounded-t-box;
 }
 
 .date-divider {

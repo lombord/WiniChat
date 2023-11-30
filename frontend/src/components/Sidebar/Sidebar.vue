@@ -94,8 +94,10 @@ export default {
     newMessage(data) {
       const { chat: chatId } = data;
       const chat = this.chats.find(({ id }) => id === chatId);
-      if (chat) chat.latest = data;
-      else this.fetchChat(chatId);
+      if (chat) {
+        chat.latest = data;
+        chat.latest.owner !== this.user.id && chat.unread++;
+      } else this.fetchChat(chatId);
     },
 
     async fetchChat(chatId) {
@@ -124,8 +126,7 @@ export default {
 }
 
 .m-sidebar {
-  @apply pt-8 px-3
-  md:pt-10 md:px-8
+  @apply pt-4 px-3 md:p-6
   h-screen w-full
   border-e border-base-content/20
   overflow-y-auto bg-base-200;

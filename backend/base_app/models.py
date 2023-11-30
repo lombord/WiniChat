@@ -1,13 +1,29 @@
 import os
 from uuid import uuid4
+from django.conf import settings
 
+from django.utils import timezone
 from django.db import models
 from django.core.validators import FileExtensionValidator
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.db.models import Q, F
-from django.db.models.functions import Greatest, Least
+from django.db.models.functions import Greatest, Least, Lower
+
+
+IMAGE_EXTS = {'png', 'jpg', 'jpeg', 'gif'}
+AUDIO_EXTS = {'mp3', 'ogg', 'wav', }
+VIDEO_EXTS = {'mp4', 'mkv', 'avi', 'mov',
+              'wmv', 'flv', 'webm', }
+DOC_EXTS = {'doc', 'docx', 'txt', 'pdf', 'rtf', 'odt', 'ott', 'xls',
+            'xlsx', 'csv', 'ppt', 'pptx', 'odp', 'ods',
+            'html', 'htm', 'xml'}
+
+EXTS_TYPES = {'image': IMAGE_EXTS, 'audio': AUDIO_EXTS,
+              'video': VIDEO_EXTS, 'doc': DOC_EXTS}
+
+file_validator = FileExtensionValidator(IMAGE_EXTS | AUDIO_EXTS | VIDEO_EXTS)
 
 
 class UserQuerySet(models.QuerySet):
@@ -101,11 +117,14 @@ class User(AbstractUser):
     class Meta:
         verbose_name = _("user")
         verbose_name_plural = _("users")
-        constraints = [models.UniqueConstraint(
-            fields=['email',],
-            name='unique_email',
-            violation_error_message=_("This email already exists.")
-        )]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['email',],
+                name='unique_email',
+                violation_error_message=_("This email already exists.")
+            ),]
+        indexes = [models.Index(fields=['first_name', 'last_name'],
+                                name='user_fullname_idx'),]
 
     def get_chats(self):
         """
@@ -173,8 +192,10 @@ class PChat(models.Model):
             models.CheckConstraint(
                 check=~Q(from_user=F('to_user')),
                 name='not_the_same_user',
-                violation_error_message=_("Can't start chat with yourself."),)
+                violation_error_message=_("Can't start chat with yourself."),),
         ]
+        indexes = [models.Index(F('created').desc(),
+                                name='pchat_created_idx',),]
 
         ordering = '-created',
 
@@ -182,33 +203,19 @@ class PChat(models.Model):
         return f"Chat: {self.from_user} and {self.to_user}"
 
 
-IMAGE_EXTS = {'png', 'jpg', 'jpeg', 'gif'}
-AUDIO_EXTS = {'mp3', 'ogg', 'wav', }
-VIDEO_EXTS = {'mp4', 'mkv', 'avi', 'mov',
-              'wmv', 'flv', 'webm', }
-DOC_EXTS = {'doc', 'docx', 'txt', 'pdf', 'rtf', 'odt', 'ott', 'xls',
-            'xlsx', 'csv', 'ppt', 'pptx', 'odp', 'ods',
-            'html', 'htm', 'xml'}
-
-exts_dict = {'image': IMAGE_EXTS, 'audio': AUDIO_EXTS,
-             'video': VIDEO_EXTS, 'doc': DOC_EXTS}
-
-file_validator = FileExtensionValidator(IMAGE_EXTS | AUDIO_EXTS | VIDEO_EXTS)
-
-
 def get_file_type(ext: str):
     ext = ext.lstrip('.')
-    for k, v in exts_dict.items():
+    for k, v in EXTS_TYPES.items():
         if ext in v:
             return k
 
 
 def message_filepath(instance: 'PMessage', fname: str):
     ext = os.path.splitext(fname)[-1]
-    ftype = get_file_type(ext)
-    instance.file_type = ftype
+    f_type = get_file_type(ext)
+    instance.file_type = f_type
     name = uuid4().hex
-    return f"pchat/{instance.chat_id}/{ftype}s/{name}{ext}"
+    return f"pchat/{instance.chat_id}/{f_type}s/{name}{ext}"
 
 
 class PMessage(models.Model):
@@ -229,14 +236,37 @@ class PMessage(models.Model):
     file_type = models.CharField(
         _('File type'), max_length=50, null=True, blank=True)
     seen = models.BooleanField(default=False)
-    created = models.DateTimeField(auto_now_add=True)
-    edited = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(editable=False)
+    edited = models.DateTimeField(editable=False)
 
     class Meta:
         ordering = '-created',
+        indexes = [models.Index(F('created').desc(), name='pmsg_created_idx'),
+                   models.Index(F('edited').desc(),
+                                name='pmsg_edited_idx'),
+                   models.Index(Lower('file_type'),
+                                name='pmsg_file_type_idx')]
+
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            self.created = self.edited = timezone.now()
+        else:
+            self.edited = timezone.now()
+        super().save(*args, **kwargs)
+
+    @property
+    def is_edited(self):
+        return self.edited != self.created
 
     def get_absolute_url(self):
         return reverse("messages-detail", kwargs={"pk": self.pk})
+
+    def delete(self, *args, **kwargs):
+        try:
+            os.remove(os.path.join(settings.MEDIA_ROOT, self.file.name))
+        except:
+            pass
+        super().delete(*args, **kwargs)
 
     def __str__(self) -> str:
         return f"{self.chat}:{self.owner} -> {self.content[:50]}"

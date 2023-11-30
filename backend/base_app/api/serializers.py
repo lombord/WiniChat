@@ -3,6 +3,7 @@ from django.http import HttpRequest
 from django.core.exceptions import ValidationError
 from django.utils.functional import cached_property
 from django.contrib.auth.password_validation import validate_password
+from django.db.models import Q
 
 from rest_framework import serializers as S, exceptions as EX
 
@@ -118,9 +119,9 @@ class MessageSerializer(S.ModelSerializer):
 
     class Meta:
         model = PMessage
-        fields = ('id', 'owner', 'content', 'file',
-                  'files', 'seen', 'created', 'chat',
-                  'edited', 'url')
+        fields = ('id', 'url', 'owner', 'chat',
+                  'content', 'file', 'files', 'seen',
+                  'created', 'edited', 'is_edited',)
         read_only_fields = ('id', 'owner', 'chat')
         extra_kwargs = {
             'file': {'write_only': True,
@@ -136,11 +137,12 @@ class ChatSerializer(S.ModelSerializer):
     companion = S.SerializerMethodField()
     latest = S.SerializerMethodField()
     url = S.SerializerMethodField()
+    unread = S.SerializerMethodField()
 
     class Meta:
         model = PChat
         fields = ('id', 'companion', 'latest', 'created',
-                  'url', 'to_user')
+                  'url', 'to_user', 'unread')
         read_only_fields = ('id',)
         extra_kwargs = {
             'to_user': {'write_only': True}
@@ -182,3 +184,7 @@ class ChatSerializer(S.ModelSerializer):
         user = self.request.user
         companion = pChat.get_companion(user)
         return UserSerializer(companion, context=self.context).data
+
+    def get_unread(self, pChat: PChat):
+        return pChat.messages.filter(
+            ~Q(owner=self.request.user) & Q(seen=False)).count()
