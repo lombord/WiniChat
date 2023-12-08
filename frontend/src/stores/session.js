@@ -417,6 +417,7 @@ export const useSessionStore = defineStore("session", {
      */
     async loadSession() {
       this.loadFromLocalStore();
+      if (!(this.access || this.refresh)) return;
       try {
         await this.fetchUser();
       } catch (err) {

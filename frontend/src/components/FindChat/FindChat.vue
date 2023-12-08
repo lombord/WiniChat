@@ -1,7 +1,7 @@
 <template>
-  <Modal class="root-box col-flex" v-model:show="showVal">
+  <Modal class="root-box col-flex">
     <Search v-model="query" />
-    <div ref="fetchElm" class="overflow-y-auto flex-1 pr-1">
+    <div ref="fetchElm" class="overflow-y-auto flex-1 pr-1 relative">
       <QPeople @chosen="startChat" v-if="dataList.length" :people="dataList">
         <template #bottom>
           <div v-int="loadNext" class="pt-20">
@@ -10,7 +10,9 @@
           </div>
         </template>
       </QPeople>
-      <h4 v-else class="text-primary text-center">Empty</h4>
+      <div v-else class="absolute inset-0 center-content">
+        <h4  class="text-primary text-center">Empty</h4>
+      </div>
     </div>
   </Modal>
 </template>
@@ -33,21 +35,9 @@ export default {
       type: Array,
       required: true,
     },
-    show: {
-      type: Boolean,
-      required: true,
-    },
   },
 
   computed: {
-    showVal: {
-      get() {
-        return this.show;
-      },
-      set(val) {
-        return this.$emit("update:show", val);
-      },
-    },
     url() {
       return `people/?qr=${this.query}`;
     },

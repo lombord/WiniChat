@@ -1,0 +1,61 @@
+.dynamic-grid {
+  --min-size: 150px;
+  --repeat-mode: auto-fill;
+  @apply grid gap-2;
+  grid-template-columns: repeat(
+    var(--repeat-mode),
+    minmax(min(var(--min-size), 100%), 1fr)
+  );
+}
+
+.btn {
+  @apply h-auto min-h-fit !important;
+}
+
+.btn {
+  @apply py-2.5 px-4;
+}
+
+.icon-btn {
+  @apply btn;
+}
+
+.icon-btn {
+  @apply btn-ghost text-lg p-2.5 rounded-full;
+}
+
+.modal-btn {
+  @apply btn;
+}
+
+.modal-btn {
+  @apply py-3.5 btn-square text-lg rounded-full text-white
+  btn-outline opacity-80 hover:opacity-100;
+}
+
+.tflex {
+  @apply flex flex-wrap gap-2 items-center;
+}
+.col-flex {
+  @apply flex flex-col gap-2;
+}
+
+.center-content {
+  @apply flex flex-col justify-center items-center;
+}
+
+.round-img {
+  @apply rounded-full shadow-sm object-cover
+  aspect-square
+  max-w-full
+  object-center;
+}
+
+.full-img {
+  @apply h-full w-full object-center object-cover;
+}
+
+/* bootstrap custom */
+.bi::before {
+  @apply block;
+}

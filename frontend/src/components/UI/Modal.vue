@@ -15,10 +15,11 @@
           <slot> </slot>
         </div>
       </div>
+      <slot name="contentOut"></slot>
       <div class="buttons-wrap">
         <div class="buttons-box">
           <slot name="buttons"></slot>
-          <button @click="$emit('update:show', false)" class="btn">
+          <button @click="$emit('update:show', false)" class="modal-btn">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
@@ -39,6 +40,7 @@ export default {
       default: "center-content",
     },
   },
+  mixins: ["update:show"],
   inheritAttrs: false,
 };
 </script>
@@ -57,32 +59,23 @@ export default {
 }
 
 .buttons-wrap {
-  @apply absolute right-2 top-2 bottom-0 pointer-events-none;
+  @apply fixed right-2 top-2 pointer-events-none;
 }
 
 .buttons-box {
-  @apply flex gap-2 
-  items-center sticky top-2
+  @apply flex gap-2 flex-wrap
+  items-center justify-end
   pointer-events-auto;
 }
 
-.close-btn {
-  @apply py-3.5 btn-square text-lg rounded-full text-white
-  btn-outline opacity-80 hover:opacity-100;
-}
-
-.buttons-box > *,
-.buttons-box > :deep(*) {
-  @apply close-btn;
-}
-
 .modal-content {
+  --min-w: 600px;
   @apply p-3 transition rounded-3xl
   overflow-hidden
   cursor-auto
   max-h-[700px]
   max-w-2xl bg-base-100 
-  w-[min(600px,100%)]
+  w-[min(var(--min-w),_100%)]
   min-h-[200px];
   animation: 0.15s ease-out 0s 1 zoom;
 }

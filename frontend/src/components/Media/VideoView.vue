@@ -19,14 +19,14 @@
       poster="@/assets/images/black.jpg"
       ref="mediaElm"
       class="video-tag"
-      :src="src"
+      :src="url"
     />
     <div
       class="absolute right-2 top-2 z-10 hover:opacity-100"
       :class="{ 'opacity-0': playing }"
     >
       <button
-        @click="$session.download(src, file.file_name)"
+        @click="$session.download(url, file_name)"
         class="icon-btn text-xl py-2.5"
       >
         <i class="bi bi-cloud-download"></i>
@@ -52,7 +52,7 @@
         />
         <div class="bottom-items">
           <div>
-            {{ currentFormat }}
+            {{ defFormat }}
           </div>
           <div class="center-items-root">
             <div class="pointer-events-auto">
@@ -112,8 +112,8 @@
 </template>
 
 <script>
-import MediaSlider from "./MediaSlider.vue";
-import RangeSlider from "./RangeSlider.vue";
+import MediaSlider from "./Utils/MediaSlider.vue";
+import RangeSlider from "./Utils/RangeSlider.vue";
 import MediaView from "./MediaView.vue";
 export default {
   data: () => ({
@@ -142,7 +142,7 @@ export default {
 <style scoped>
 /* Root styles */
 .root-box {
-  @apply relative rounded-2xl overflow-hidden text-white/80;
+  @apply relative overflow-hidden text-white/80;
 }
 
 .video-tag {

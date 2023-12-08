@@ -1,13 +1,13 @@
 import os
+
 from django.http import HttpRequest
 from django.core.exceptions import ValidationError
 from django.utils.functional import cached_property
 from django.contrib.auth.password_validation import validate_password
-from django.db.models import Q
 
 from rest_framework import serializers as S, exceptions as EX
 
-from ..models import User, PChat, PMessage
+from ..models import User, PChat, MessageFile, PMessage
 
 
 class UserSerializer(S.ModelSerializer):
@@ -89,45 +89,60 @@ class UserRegisterSerializer(S.ModelSerializer):
 
 class AbsoluteURLField(S.Field):
 
-    def __init__(self, **kwargs):
+    def __init__(self, *, url_name=None, **kwargs):
+        self.url_name = url_name
         kwargs['read_only'] = True
         kwargs.setdefault('source', '*')
         super().__init__(**kwargs)
 
     def to_representation(self, value):
-        abs_url = value.get_absolute_url()
+        args = [self.url_name,] if self.url_name else []
+        abs_url = value.get_absolute_url(*args)
         request: HttpRequest = self.context.get('request')
         return request.build_absolute_uri(abs_url)
 
 
-class FileSerializer(S.Serializer):
-    url = S.FileField(source='file', default=None)
-    file_type = S.CharField()
-    file_name = S.SerializerMethodField()
+class FileSerializer(S.ModelSerializer):
+    url = S.FileField(source='file', read_only=True)
 
-    def get_file_name(self, instance: PMessage):
-        if instance.file:
-            return os.path.basename(instance.file.name)
+    class Meta:
+        model = MessageFile
+        fields = ('id', 'file', 'url', 'file_type',
+                  'metadata', 'message')
+        read_only_fields = ('file_type', 'metadata')
+        extra_kwargs = {'message': {'write_only': True},
+                        'file': {'write_only': True}}
 
 
 class MessageSerializer(S.ModelSerializer):
     """
     Serializer for private messages
     """
-    files = FileSerializer(source='*', read_only=True)
+    files = FileSerializer(many=True, read_only=True)
     url = AbsoluteURLField()
 
     class Meta:
         model = PMessage
         fields = ('id', 'url', 'owner', 'chat',
-                  'content', 'file', 'files', 'seen',
+                  'content', 'files', 'seen',
                   'created', 'edited', 'is_edited',)
         read_only_fields = ('id', 'owner', 'chat')
-        extra_kwargs = {
-            'file': {'write_only': True,
-                     'required': False, 'default': None,
-                     'initial': None, 'allow_null': True}
-        }
+
+    def create_files(self, files: list, msg: PMessage):
+        serializer = FileSerializer(data=[{'file': file, 'message': msg.pk}
+                                          for file in files], many=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+    def create(self, validated_data: dict):
+        files = self.initial_data.pop('files', [])
+        msg = super().create(validated_data)
+        if files:
+            try:
+                self.create_files(files, msg)
+            except Exception as e:
+                print(e)
+        return msg
 
 
 class ChatSerializer(S.ModelSerializer):
@@ -137,12 +152,13 @@ class ChatSerializer(S.ModelSerializer):
     companion = S.SerializerMethodField()
     latest = S.SerializerMethodField()
     url = S.SerializerMethodField()
+    files_url = AbsoluteURLField(url_name='chat_files')
     unread = S.SerializerMethodField()
 
     class Meta:
         model = PChat
         fields = ('id', 'companion', 'latest', 'created',
-                  'url', 'to_user', 'unread')
+                  'url', 'files_url', 'to_user', 'unread')
         read_only_fields = ('id',)
         extra_kwargs = {
             'to_user': {'write_only': True}
@@ -153,9 +169,9 @@ class ChatSerializer(S.ModelSerializer):
         Gets latest message from a chat
         """
         try:
-            chat = pChat.messages.latest('created')
-            return MessageSerializer(chat, context=self.context).data
-        except:
+            msg = pChat.messages.latest('created')
+            return MessageSerializer(msg, context=self.context).data
+        except Exception as e:
             return None
 
     @cached_property
@@ -186,5 +202,4 @@ class ChatSerializer(S.ModelSerializer):
         return UserSerializer(companion, context=self.context).data
 
     def get_unread(self, pChat: PChat):
-        return pChat.messages.filter(
-            ~Q(owner=self.request.user) & Q(seen=False)).count()
+        return pChat.count_messages_for(self.request.user)

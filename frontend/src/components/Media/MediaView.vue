@@ -4,30 +4,18 @@
 
 <script>
 import moment from "moment";
+import fileMixin from "@/mixins/fileMixin.js";
 
 export default {
   data: () => ({
     paused: true,
     currentTime: 0,
     duration: 0,
-    loading: false,
+    loading: true,
     buffered: 0,
   }),
-  props: {
-    file: {
-      type: Object,
-      required: true,
-    },
-  },
+
   computed: {
-    src() {
-      return this.file.url;
-    },
-
-    file_name() {
-      return this.file.file_name || this.src.split("/").reverse()[0];
-    },
-
     mediaElm() {
       return this.$refs.mediaElm;
     },
@@ -41,18 +29,27 @@ export default {
     },
 
     durationMom() {
-      return this.getMoment(Math.round(this.duration * 1e3));
+      return moment.utc(this.duration * 1e3);
+    },
+
+    currentMom() {
+      return moment.utc(this.currentTime * 1e3);
     },
 
     format() {
       return this.durationMom.hour() >= 1 ? "h:mm:ss" : "m:ss";
     },
 
-    currentFormat() {
-      const current = this.getMoment(Math.round(this.currentTime * 1e3));
-      const duration = this.durationMom;
-      const format = this.format;
-      return `${current.format(format)}/${duration.format(format)}`;
+    currFormat() {
+      return this.currentMom.format(this.format);
+    },
+
+    durFormat() {
+      return this.durationMom.format(this.format);
+    },
+
+    defFormat() {
+      return `${this.currFormat}/${this.durFormat}`;
     },
 
     muted: {
@@ -81,12 +78,12 @@ export default {
 
   methods: {
     async play() {
-      await this.mediaElm.play();
       const prev = this.$media.currentMedia;
-      this.$media.currentMedia = this;
       if (prev && prev !== this) {
         prev.pause();
       }
+      this.$media.currentMedia = this;
+      await this.mediaElm.play();
     },
 
     pause() {
@@ -96,13 +93,6 @@ export default {
     toggleState() {
       if (this.paused) this.play();
       else this.pause();
-    },
-
-    getMoment(ms) {
-      const result = moment(0);
-      result.hours(0);
-      result.milliseconds(ms);
-      return result;
     },
 
     rewind(num) {
@@ -160,6 +150,8 @@ export default {
       this.mediaElm.muted = val;
     },
   },
+
+  mixins: [fileMixin],
 };
 </script>
 

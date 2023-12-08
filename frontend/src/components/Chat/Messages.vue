@@ -30,7 +30,7 @@
           </div>
         </div>
       </template>
-      <div class="date-divider pointer-events-none">
+      <div class="date-divider" :class="{ 'player-divider': isPlayerVisible }">
         <span class="date-badge badge badge-primary">
           {{ divDate(date) }}
         </span>
@@ -71,6 +71,9 @@ export default {
         else context.push(msg);
       });
       return result;
+    },
+    isPlayerVisible() {
+      return !!this.$tracks.component;
     },
   },
 
@@ -164,8 +167,13 @@ export default {
 }
 
 .date-divider {
-  @apply text-center sticky top-20 md:top-24 py-2;
+  @apply text-center pointer-events-none sticky top-20 lg:top-24 z-10 py-2;
 }
+
+.player-divider {
+  @apply top-32;
+}
+
 .date-badge {
   @apply text-base p-3 
   bg-opacity-60 text-white border-none

@@ -1,7 +1,6 @@
 from functools import wraps
 from channels.generic import websocket as WS
 from channels.db import database_sync_to_async as DSA
-from click import group
 
 
 def exclude_sender(method):

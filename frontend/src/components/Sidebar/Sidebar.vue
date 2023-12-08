@@ -2,16 +2,16 @@
   <aside class="side-root" :style="{ '--width': `${width}px` }">
     <div class="m-sidebar flex flex-col">
       <SideUser />
-      <div class="mt-2">
-        <button class="find-btn tflex" @click="find_show = true">
+      <div class="my-4">
+        <button class="find-btn tflex" @click="findShow = true">
           <span class="text-secondary text-xl">
             <i class="fa-solid fa-circle-nodes"></i>
           </span>
           Find People
         </button>
-        <FindChat v-if="find_show" :chats="chats" v-model:show="find_show" />
+        <FindChat v-if="findShow" :chats="chats" v-model:show="findShow" />
       </div>
-      <div class="divider rounded-full mt-2"></div>
+
       <div
         class="chats-box flex-1 shrink-0 overflow-y-auto pb-2"
         ref="fetchElm"
@@ -40,7 +40,7 @@ import Chats from "./Chats.vue";
 export default {
   data: () => ({
     mouseDown: false,
-    find_show: false,
+    findShow: false,
     width: 400,
     url: "chats/",
   }),
@@ -115,7 +115,7 @@ export default {
 
 <style scoped>
 .side-root {
-  @apply flex relative z-50;
+  @apply flex relative z-[100];
   --width: 200px;
   width: clamp(max(100px, 10%), 35%, min(var(--width), 35%));
 }
@@ -126,10 +126,14 @@ export default {
 }
 
 .m-sidebar {
-  @apply pt-4 px-3 md:p-6
+  @apply p-4 px-3 md:p-6
   h-screen w-full
-  border-e border-base-content/20
+  border-r border-base-content/10
   overflow-y-auto bg-base-200;
+}
+
+.m-sidebar {
+  @apply pb-0;
 }
 
 .find-btn {

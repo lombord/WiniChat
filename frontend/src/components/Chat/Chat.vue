@@ -1,27 +1,5 @@
 <template>
-  <div @scroll="scrolled" ref="fetchElm" class="main-div">
-    <div class="chat-top">
-      <div class="user-short">
-        <div class="avatar" :class="avatarCls">
-          <div class="round-img w-16">
-            <img :src="companion.photo" />
-          </div>
-        </div>
-        <h5 class="text-primary">{{ username }}</h5>
-      </div>
-      <div>
-        <button
-          @click="$emit('update:showSide', !showSide)"
-          class="icon-btn py-2.5 px-3 opacity-60 hover:opacity-100"
-        >
-          <i
-            v-if="!showSide"
-            class="bi bi-layout-sidebar-inset-reverse py-0.5"
-          ></i>
-          <i v-else class="fa-solid fa-xmark"></i>
-        </button>
-      </div>
-    </div>
+  <div ref="fetchElm" class="main-div">
     <div class="messages-main">
       <Messages
         @vue:mounted="scrollBottom"
@@ -76,11 +54,11 @@
 
 <script>
 import fetchData from "@/mixins/fetchData.js";
-
 import Messages from "./Messages.vue";
-import ChatInput from "./ChatInput.vue";
+import ChatInput from "./ChatInput";
 
 export default {
+  expose: ['scrolled'],
   data: () => ({
     message: null,
     showScroll: false,
@@ -94,8 +72,8 @@ export default {
       type: Object,
       required: true,
     },
-    showSide: {
-      type: Boolean,
+    scrollElm: {
+      type: Element,
       required: true,
     },
   },
@@ -105,26 +83,19 @@ export default {
       return this.chat.companion;
     },
 
-    username() {
-      return this.companion.full_name || this.companion.username;
-    },
-
     user() {
       return this.$session.user;
     },
 
     url() {
-      return this.chat.url;
-    },
-
-    avatarCls() {
-      return this.companion.status ? "online" : "offline";
+      const { unread } = this.chat;
+      return `${this.chat.url}?offset=${unread && unread - 1}`;
     },
 
     isFullScroll() {
       return (
-        this.scrollTop + this.fetchElm.clientHeight >=
-        this.fetchElm.scrollHeight
+        this.scrollTop + this.scrollElm.clientHeight >=
+        this.scrollElm.scrollHeight
       );
     },
 
@@ -144,7 +115,7 @@ export default {
   },
 
   mounted() {
-    this.scrollTop = this.fetchElm.scrollTop;
+    this.scrollTop = this.scrollElm.scrollTop;
   },
 
   beforeUnmount() {
@@ -152,15 +123,13 @@ export default {
   },
 
   methods: {
-    async postMsg(tmpFile, resetCB) {
-      if (!(this.message.content || this.message.file)) return;
-      const data = this.message.file
-        ? this.toFormData(this.message)
-        : this.message;
+    async postMsg(tmpFiles) {
+      const { content, files } = this.message;
+      if (!(content || files.length)) return;
+      const data = files.length ? this.toFormData(this.message) : this.message;
       const msg = this.addMsg(this.message, true);
-      msg.files = tmpFile;
+      msg.files = tmpFiles;
       this.resetMsg();
-      resetCB();
       const prom = this.$session.post(this.url, data);
       try {
         const response = await this.$session.animate(prom, null, "xyz");
@@ -169,22 +138,22 @@ export default {
         this.chat.latest = msg;
         this.socket.sendChat(this.chat.id, msg);
       } catch (error) {
-        this.$flashes.error("Invalid file type!");
+        this.$flashes.error("Something went wrong");
       }
     },
 
-    toFormData(obj) {
+    toFormData(msg) {
       const form = new FormData();
-      for (const key in obj) {
-        form.append(key, obj[key]);
-      }
+      form.append("content", msg.content);
+      for (let i = 0; i < msg.files.length; i++)
+        form.append("files", msg.files[i]);
       return form;
     },
 
     resetMsg() {
       this.message = {
         content: "",
-        file: null,
+        files: [],
       };
     },
 
@@ -202,7 +171,12 @@ export default {
 
     removeMsg(id) {
       const idx = this.dataList.findIndex((msg) => msg.id == id);
-      idx >= 0 && this.dataList.splice(idx, 1);
+      if (idx >= 0) {
+        const [msg] = this.dataList.splice(idx, 1);
+        if (!msg.seen && msg.owner != this.user.id) {
+          this.chat.unread = Math.max(chat.unread - 1, 0);
+        }
+      }
     },
 
     async editMsg(msg, saveCB) {
@@ -226,11 +200,11 @@ export default {
     },
 
     scrollBottom(options) {
-      this.fetchElm.scrollTo({ top: this.fetchElm.scrollHeight, ...options });
+      this.scrollElm.scrollTo({ top: this.scrollElm.scrollHeight, ...options });
     },
 
     scrollTo(height) {
-      this.fetchElm.scrollTo({ top: height });
+      this.scrollElm.scrollTo({ top: height });
     },
 
     scrolled({ target: el }) {
@@ -252,12 +226,7 @@ export default {
 
 <style scoped>
 .main-div {
-  @apply flex flex-col relative
-  overflow-y-auto overflow-x-hidden h-full;
-}
-
-.main-div::-webkit-scrollbar-track {
-  @apply bg-base-200;
+  @apply flex flex-col relative flex-1 h-full;
 }
 
 .to-bottom {
@@ -266,17 +235,6 @@ export default {
   relative
   pointer-events-auto
   hover:opacity-100 btn-square;
-}
-
-.chat-top {
-  @apply sticky top-0 flex items-center justify-between
-  bg-base-200/50 backdrop-blur-3xl px-4 border-b
-  z-[10] py-2 shrink-0
-  border-base-content/10;
-}
-
-.user-short {
-  @apply flex gap-2 items-center truncate;
 }
 
 .messages-main {

@@ -20,7 +20,6 @@ document.addEventListener("keydown", (e) => {
   e.ctrlKey && list.push("ctrl");
   switch (list.join(".")) {
     case "space":
-      e.preventDefault();
       component.toggleState();
       break;
     case "keyf":

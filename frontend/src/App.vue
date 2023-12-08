@@ -39,5 +39,6 @@ export default {
 
 <style>
 @import "@/assets/base.css";
+@import "@/assets/main.css";
 @import "@/assets/animations.css";
 </style>

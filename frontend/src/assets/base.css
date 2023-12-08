@@ -60,44 +60,7 @@ a {
   @apply transition hover:opacity-90;
 }
 
-.btn {
-  @apply h-auto min-h-fit !important;
-}
 
-.btn {
-  @apply py-2.5 px-4;
-}
-
-.icon-btn {
-  @apply btn;
-}
-
-.icon-btn {
-  @apply btn-ghost text-lg p-2.5 rounded-full;
-}
-
-.tflex {
-  @apply flex flex-wrap gap-2 items-center;
-}
-.col-flex {
-  @apply flex flex-col gap-2;
-}
-
-.center-content {
-  @apply flex flex-col justify-center items-center;
-}
-
-.round-img {
-  @apply rounded-full shadow-sm object-cover
-  aspect-square
-  max-w-full
-  object-center;
-}
-
-/* bootstrap custom */
-.bi::before {
-  @apply block;
-}
 
 /* Scroll bar Styles */
 
@@ -114,7 +77,7 @@ a {
 
 /* Handle */
 ::-webkit-scrollbar-thumb {
-  @apply bg-base-content 
+  @apply bg-base-content invisible
   bg-opacity-10 rounded-full 
   max-w-[6px];
 }
@@ -122,6 +85,9 @@ a {
 /* Handle on hover */
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-opacity-20;
+}
+*:hover::-webkit-scrollbar-thumb {
+  @apply visible;
 }
 
 ::-webkit-scrollbar-thumb:active {

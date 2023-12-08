@@ -1,14 +1,15 @@
 import os
 from uuid import uuid4
-from django.conf import settings
+from mutagen import File
 
 from django.utils import timezone
 from django.db import models
 from django.core.validators import FileExtensionValidator
+from django.dispatch import receiver
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.models import AbstractUser, UserManager
-from django.db.models import Q, F
+from django.db.models import Q, F, Min
 from django.db.models.functions import Greatest, Least, Lower
 
 
@@ -20,7 +21,7 @@ DOC_EXTS = {'doc', 'docx', 'txt', 'pdf', 'rtf', 'odt', 'ott', 'xls',
             'xlsx', 'csv', 'ppt', 'pptx', 'odp', 'ods',
             'html', 'htm', 'xml'}
 
-EXTS_TYPES = {'image': IMAGE_EXTS, 'audio': AUDIO_EXTS,
+FILE_TYPES = {'image': IMAGE_EXTS, 'audio': AUDIO_EXTS,
               'video': VIDEO_EXTS, 'doc': DOC_EXTS}
 
 file_validator = FileExtensionValidator(IMAGE_EXTS | AUDIO_EXTS | VIDEO_EXTS)
@@ -199,23 +200,102 @@ class PChat(models.Model):
 
         ordering = '-created',
 
+    def count_messages_for(self, user: User):
+        """
+        Returns new unread messages count for a given user
+        """
+        messages = self.messages
+        if not messages.exists():
+            return 0
+        expr = ~Q(owner=user) & Q(seen=False)
+        try:
+            user_latest = messages.filter(owner=user).values_list(
+                'created', flat=True).latest('created')
+            expr = Q(created__gt=user_latest) & expr
+        except:
+            pass
+        created = (messages.filter(expr)
+                   .aggregate(first=Min('created')).get('first'))
+        if not created:
+            return 0
+        return messages.filter(created__gte=created).count()
+
     def __str__(self) -> str:
         return f"Chat: {self.from_user} and {self.to_user}"
 
 
 def get_file_type(ext: str):
     ext = ext.lstrip('.')
-    for k, v in EXTS_TYPES.items():
+    for k, v in FILE_TYPES.items():
         if ext in v:
             return k
 
 
-def message_filepath(instance: 'PMessage', fname: str):
+def message_filepath(instance: 'MessageFile', fname: str):
     ext = os.path.splitext(fname)[-1]
     f_type = get_file_type(ext)
     instance.file_type = f_type
     name = uuid4().hex
-    return f"pchat/{instance.chat_id}/{f_type}s/{name}{ext}"
+    return f"pchat/{instance.message.chat_id}/{f_type}s/{name}{ext}"
+
+
+class MessageFile(models.Model):
+    file = models.FileField(upload_to=message_filepath,
+                            validators=[file_validator,])
+    file_type = models.CharField(
+        _('File type'), max_length=50)
+    message = models.ForeignKey(
+        'PMessage', on_delete=models.CASCADE, related_name='files')
+    metadata = models.JSONField()
+
+    class Meta:
+        indexes = [models.Index(Lower('file_type'),
+                                name='pmsg_file_type_idx'),]
+        ordering = ('-id',)
+
+
+def delete_file(file: models.FileField):
+    if file and os.path.isfile(file.path):
+        os.remove(file.path)
+
+
+@receiver(models.signals.post_delete, sender=MessageFile)
+def auto_delete_file(sender, instance: MessageFile, **kwargs):
+    delete_file(instance.file)
+
+
+def set_metadata(instance: MessageFile):
+    file = instance.file
+    metadata = {'file_name': file.name,
+                'size': file.size}
+    ext = os.path.splitext(file.name)[-1][1:]
+
+    if ext in AUDIO_EXTS:
+        author = title = duration = None
+        try:
+            audio = File(file.open('rb'), easy=True)
+            duration = audio.info.length
+            tags = audio.tags
+            title = tags.get('title', [None])[0]
+            author = (tags.get('artist') or tags.get('author') or [None])[0]
+        except Exception as e:
+            print(e)
+        metadata.update(
+            {'title': title, 'author': author, 'duration': duration})
+    instance.metadata = metadata
+
+
+@receiver(models.signals.pre_save, sender=MessageFile)
+def on_file_save(sender: MessageFile, instance: MessageFile, **kwargs):
+    if not instance.pk:
+        set_metadata(instance)
+    try:
+        old_file = sender.objects.get(pk=instance.pk).file
+    except:
+        return
+    new_file = instance.file
+    if new_file != old_file:
+        delete_file(old_file)
 
 
 class PMessage(models.Model):
@@ -230,11 +310,6 @@ class PMessage(models.Model):
                              verbose_name=_('Message PChat'))
     content = models.TextField(_('Message content'),
                                blank=True, null=True)
-    file = models.FileField(upload_to=message_filepath,
-                            validators=[file_validator,],
-                            null=True, blank=True)
-    file_type = models.CharField(
-        _('File type'), max_length=50, null=True, blank=True)
     seen = models.BooleanField(default=False)
     created = models.DateTimeField(editable=False)
     edited = models.DateTimeField(editable=False)
@@ -243,9 +318,7 @@ class PMessage(models.Model):
         ordering = '-created',
         indexes = [models.Index(F('created').desc(), name='pmsg_created_idx'),
                    models.Index(F('edited').desc(),
-                                name='pmsg_edited_idx'),
-                   models.Index(Lower('file_type'),
-                                name='pmsg_file_type_idx')]
+                                name='pmsg_edited_idx')]
 
     def save(self, *args, **kwargs):
         if not self.pk:
@@ -260,13 +333,6 @@ class PMessage(models.Model):
 
     def get_absolute_url(self):
         return reverse("messages-detail", kwargs={"pk": self.pk})
-
-    def delete(self, *args, **kwargs):
-        try:
-            os.remove(os.path.join(settings.MEDIA_ROOT, self.file.name))
-        except:
-            pass
-        super().delete(*args, **kwargs)
 
     def __str__(self) -> str:
         return f"{self.chat}:{self.owner} -> {self.content[:50]}"

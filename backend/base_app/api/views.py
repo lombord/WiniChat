@@ -1,17 +1,13 @@
-from django.http import HttpRequest, HttpResponseRedirect
-from django.db.models import Max, F, Min, Q
+from django.db.models import Max, F, Q
 from rest_framework import generics as G
+from django.utils.functional import cached_property
 from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.utils.urls import replace_query_param
 
-
-from ..models import User
+from ..models import User, FILE_TYPES, MessageFile
 
 from . import serializers as S
 from . import permissions as P
-
-
-class MyLimitPagination(LimitOffsetPagination):
-    default_limit = 10
 
 
 class SessionAPIView(G.RetrieveUpdateAPIView):
@@ -50,12 +46,16 @@ class PeopleAPIView(G.ListAPIView):
         return qs[:30]
 
 
+class ChatsLimitPagination(LimitOffsetPagination):
+    default_limit = 10
+
+
 class ChatsAPIView(G.ListCreateAPIView):
     """
     API view to get private chats that user have 
     """
     serializer_class = S.ChatSerializer
-    pagination_class = MyLimitPagination
+    pagination_class = ChatsLimitPagination
 
     def get_queryset(self):
         chat_id = self.request.GET.get('id')
@@ -66,47 +66,55 @@ class ChatsAPIView(G.ListCreateAPIView):
         return chats.order_by('-last_created')
 
 
-class ChatAPIView(G.ListCreateAPIView):
-    """
-    API view to get messages from a private chat
-    """
-    serializer_class = S.MessageSerializer
-    _chat = None
+class ChatLimitPagination(LimitOffsetPagination):
+    default_limit = 30
 
-    @property
+    def get_previous_link(self):
+        url = super().get_previous_link()
+        try:
+            assert url and self.offset
+            if self.offset - self.limit <= 0:
+                return replace_query_param(url, self.limit_query_param, self.offset)
+        except:
+            return url
+
+
+class ChatMixin:
+
+    @cached_property
     def chat(self):
         """
         Getter for the chat. Checks if the
         chat belongs to user
         """
-        if not self._chat:
-            user = self.request.user
-            self._chat = G.get_object_or_404(
-                user.get_chats(), pk=self.kwargs.get('pk'))
-        return self._chat
+        user = self.request.user
+        return G.get_object_or_404(
+            user.get_chats(), pk=self.kwargs.get('pk'))
 
-    def list(self, request: HttpRequest, *args, **kwargs):
-        if not request.GET:
-            response = self.get_last_seen(request)
-            if response is not None:
-                return response
-        return super().list(request, *args, **kwargs)
 
-    def get_last_seen(self, request: HttpRequest):
-        messages = self.chat.messages
-        if not messages.exists():
-            return
-        last = messages.values('owner_id', 'seen').latest('created')
-        if last['seen'] or last['owner_id'] == request.user.id:
-            return
-        created = (messages.filter(
-            ~Q(owner=request.user) & Q(seen=False))
-            .aggregate(min=Min('created')).get('min'))
-        offset = messages.filter(created__gt=created).count()
-        return HttpResponseRedirect(f"{request.path_info}?offset={offset}")
+class ChatAPIView(ChatMixin, G.ListCreateAPIView):
+    """
+    API view to get messages from a private chat
+    """
+    serializer_class = S.MessageSerializer
+    pagination_class = ChatLimitPagination
 
     def get_queryset(self):
         return self.chat.messages.all()
 
     def perform_create(self, serializer: S.MessageSerializer):
         return serializer.save(chat=self.chat, owner=self.request.user)
+
+
+class ChatFilesView(ChatMixin, G.ListAPIView):
+    """
+    API view for chat files
+    """
+    serializer_class = S.FileSerializer
+
+    def get_queryset(self):
+        type_ = self.request.GET.get('type', '')
+        expr = Q(message__chat_id=self.chat.pk)
+        if type_.lower() in FILE_TYPES:
+            expr &= Q(file_type=type_)
+        return MessageFile.objects.filter(expr)

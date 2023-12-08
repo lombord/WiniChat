@@ -1,5 +1,5 @@
 <template>
-  <Modal class="set-box" v-bind="$attrs">
+  <Modal class="set-box">
     <div class="photo-box">
       <div class="photo-wrap online avatar">
         <PhotoEdit class="w-28 photo" />

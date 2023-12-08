@@ -8,8 +8,10 @@
   >
     <div class="chat" :class="$attrs.class">
       <div class="chat-bubble">
-        <template v-if="file">
-          <component :is="mediaComponent" :file="file" class="my-2 max-h-96" />
+        <template v-if="files.length">
+          <div class="files-wrapper">
+            <component :is="mediaComponent" :files="files" />
+          </div>
         </template>
         <div class="message">
           {{ message.content }}
@@ -43,10 +45,9 @@
 </template>
 
 <script>
+import { defineAsyncComponent } from "vue";
 import moment from "moment";
-import ImgView from "@/components/Media/ImgView.vue";
-import VideoView from "@/components/Media/VideoView.vue";
-import AudioView from "@/components/Media/AudioView.vue";
+
 import ContextMenu from "@/components/UI/ContextMenu.vue";
 
 export default {
@@ -83,7 +84,7 @@ export default {
       return [{ label: "Copy", cb: this.copyMsg }];
     },
 
-    file() {
+    files() {
       return this.message.files;
     },
 
@@ -116,10 +117,10 @@ export default {
     },
 
     mediaComponent() {
-      const { file_type } = this.file;
-      if (file_type == "image") return "ImgView";
-      if (file_type == "video") return "VideoView";
-      if (file_type == "audio") return "AudioView";
+      const { file_type } = this.files[0];
+      if (file_type == "image") return "ImagesSlide";
+      if (file_type == "video") return "VideosSlide";
+      if (file_type == "audio") return "AudiosList";
     },
 
     socket() {
@@ -200,7 +201,18 @@ export default {
 
   emits: ["messageSeen", "removeMsg", "editMsg"],
 
-  components: { ImgView, VideoView, AudioView, ContextMenu },
+  components: {
+    ImagesSlide: defineAsyncComponent(() =>
+      import("@/components/Media/Slides/ImagesSlide.vue")
+    ),
+    AudiosList: defineAsyncComponent(() =>
+      import("@/components/Media/List/AudiosList.vue")
+    ),
+    VideosSlide: defineAsyncComponent(() =>
+      import("@/components/Media/Slides/VideosSlide.vue")
+    ),
+    ContextMenu,
+  },
   inheritAttrs: false,
 };
 </script>
@@ -223,6 +235,20 @@ export default {
 
 .chat-bubble {
   @apply break-words max-w-[min(theme(maxWidth.lg),100%)];
+}
+
+.files-wrapper {
+  @apply my-2 rounded-2xl overflow-hidden;
+}
+
+.files-wrapper > :deep(.dynamic-grid) {
+  --min-size: 200px;
+  --repeat-mode: auto-fit;
+  @apply gap-1;
+}
+
+.files-wrapper > :deep(.dynamic-grid > *) {
+  @apply min-h-[250px] max-h-[300px];
 }
 
 .load-anim::after {

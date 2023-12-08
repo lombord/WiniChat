@@ -25,7 +25,7 @@ export default {
     },
   },
 
-  mounted() {
+  async mounted() {
     if (this.fetch_on_mounted) {
       this.fetchData();
     }
@@ -102,19 +102,21 @@ export default {
       this.addNext(results);
       this.next = next;
       await this.$nextTick();
-      this.fetchElm.scrollTo({
-        top: this.fetchElm.scrollTop + el.offsetHeight + 10,
+      const scrollElm = this.scrollElm || this.fetchElm;
+      scrollElm.scrollTo({
+        top: scrollElm.scrollTop + el.offsetHeight,
       });
     },
 
     async loadPrevious() {
       if (!this.previous) return true;
       const { results, previous } = await this.fetchPart(this.previous);
-      const { scrollTop } = this.fetchElm;
+      const scrollElm = this.scrollElm || this.fetchElm;
+      const { scrollTop } = scrollElm;
       this.addPrevious(results);
       this.previous = previous;
       await this.$nextTick();
-      this.fetchElm.scrollTo({ top: scrollTop });
+      scrollElm.scrollTo({ top: scrollTop });
     },
   },
 };
