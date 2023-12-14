@@ -30,7 +30,7 @@ class JWTAuthMiddleware(BaseMiddleware):
     async def __call__(self, scope, receive, send):
         # Close old database connections to prevent usage of timed out connections
         close_old_connections()
-        # get query string and decode it to normal str
+        # get query byte string and decode it to normal str
         qs = scope['query_string'].decode()
         # parse query string to dictionary
         qr_dict = parse_qs(qs)
@@ -38,7 +38,7 @@ class JWTAuthMiddleware(BaseMiddleware):
         try:
             # get the token from parsed dictionary
             token = qr_dict['token'][0]
-            # Validate the token
+            # Validate the token type
             UntypedToken(token)
         except Exception as e:
             # stop JWT authentication if any error occurred

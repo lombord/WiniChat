@@ -1,6 +1,6 @@
 <template>
   <Modal class="video-modal">
-    <VideoView :key="file" :file="file" />
+    <VideoView class="max-h-[inherit]" :key="file" :file="file" />
     <template #contentOut>
       <slot name="contentOut"></slot>
     </template>

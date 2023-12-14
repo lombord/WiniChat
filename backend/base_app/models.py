@@ -2,6 +2,7 @@ import os
 from uuid import uuid4
 from mutagen import File
 
+
 from django.utils import timezone
 from django.db import models
 from django.core.validators import FileExtensionValidator
@@ -98,8 +99,10 @@ class User(AbstractUser):
     """
     Main User model
     """
-    first_name = models.CharField(_('first name'), max_length=150)
-    last_name = models.CharField(_('last name'), max_length=150)
+    first_name = models.CharField(_('first name'), max_length=150,
+                                  default='', blank=True)
+    last_name = models.CharField(_('last name'), max_length=150,
+                                 default='', blank=True)
     bio = models.CharField(max_length=100, null=True, blank=True)
     photo = models.ImageField(upload_to=photo_path,
                               max_length=255,
@@ -115,6 +118,9 @@ class User(AbstractUser):
 
     objects = MyUserManager()
 
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = ['username',]
+
     class Meta:
         verbose_name = _("user")
         verbose_name_plural = _("users")
@@ -125,7 +131,13 @@ class User(AbstractUser):
                 violation_error_message=_("This email already exists.")
             ),]
         indexes = [models.Index(fields=['first_name', 'last_name'],
-                                name='user_fullname_idx'),]
+                                name='user_fullname_idx'),
+                   models.Index(F('status').desc(), name='user_status_idx')]
+
+    def save(self, *args, **kwargs):
+        if not self.first_name:
+            self.first_name = self.username
+        super().save(*args, **kwargs)
 
     def get_chats(self):
         """
@@ -171,18 +183,6 @@ class PChat(models.Model):
     created = models.DateTimeField(auto_now_add=True,
                                    verbose_name=_('Created datetime'))
 
-    def get_absolute_url(self, name='chat'):
-        return reverse(name, kwargs={"pk": self.pk})
-
-    def get_companion(self, user):
-        """
-        Returns a companion based on the user
-        """
-        return self.from_user if user == self.to_user else self.to_user
-
-    def get_companion_id(self, user_id):
-        return self.from_user_id if user_id == self.to_user_id else self.to_user_id
-
     class Meta:
         constraints = [
             models.UniqueConstraint(
@@ -198,7 +198,19 @@ class PChat(models.Model):
         indexes = [models.Index(F('created').desc(),
                                 name='pchat_created_idx',),]
 
-        ordering = '-created',
+        ordering = ('-created',)
+
+    def get_absolute_url(self, name='chat'):
+        return reverse(name, kwargs={"pk": self.pk})
+
+    def get_companion(self, user):
+        """
+        Returns a companion based on the user
+        """
+        return self.from_user if user == self.to_user else self.to_user
+
+    def get_companion_id(self, user_id):
+        return self.from_user_id if user_id == self.to_user_id else self.to_user_id
 
     def count_messages_for(self, user: User):
         """
@@ -316,9 +328,7 @@ class PMessage(models.Model):
 
     class Meta:
         ordering = '-created',
-        indexes = [models.Index(F('created').desc(), name='pmsg_created_idx'),
-                   models.Index(F('edited').desc(),
-                                name='pmsg_edited_idx')]
+        indexes = [models.Index(F('created').desc(), name='pmsg_created_idx')]
 
     def save(self, *args, **kwargs):
         if not self.pk:

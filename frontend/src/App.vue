@@ -1,6 +1,6 @@
 <template>
   <div v-if="loaded">
-    <Flashes />
+    <Flashes class="z-[10000]" />
     <Session v-if="$session.isAuthenticated" />
     <Guest v-else />
   </div>

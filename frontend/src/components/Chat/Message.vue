@@ -234,20 +234,20 @@ export default {
 }
 
 .chat-bubble {
-  @apply break-words max-w-[min(theme(maxWidth.lg),100%)];
+  @apply break-words max-w-[min(theme(maxWidth.xl),100%)];
 }
 
 .files-wrapper {
   @apply my-2 rounded-2xl overflow-hidden;
 }
 
-.files-wrapper > :deep(.dynamic-grid) {
+.files-wrapper > :deep(:is(.dynamic-flex, .dynamic-grid)) {
   --min-size: 200px;
   --repeat-mode: auto-fit;
-  @apply gap-1;
+  @apply gap-0.5;
 }
 
-.files-wrapper > :deep(.dynamic-grid > *) {
+.files-wrapper > :deep(:is(.dynamic-flex, .dynamic-grid) > *) {
   @apply min-h-[250px] max-h-[300px];
 }
 

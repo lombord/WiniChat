@@ -2,29 +2,59 @@ import os
 
 from django.http import HttpRequest
 from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError
 from django.utils.functional import cached_property
 from django.contrib.auth.password_validation import validate_password
 
 from rest_framework import serializers as S, exceptions as EX
+from rest_framework.fields import empty
+
 
 from ..models import User, PChat, MessageFile, PMessage
 
 
-class UserSerializer(S.ModelSerializer):
+class UserEditMixin:
+
+    def validate_password(self, value):
+        """
+        Validates base password requirements of django
+        """
+        try:
+            validate_password(value)
+        except Exception as e:
+            raise S.ValidationError(e.messages)
+        return value
+
+
+class UserSerializer(UserEditMixin, S.ModelSerializer):
     """
     User serializer for update and to get main info
     """
+
+    old_password = S.CharField(max_length=128,
+                               label="Password",
+                               write_only=True)
 
     class Meta:
         model = User
         fields = ('id', 'username',  'first_name',
                   'last_name', 'full_name', 'bio',
-                  'photo', 'status')
+                  'photo', 'status', 'old_password',
+                  'password')
         extra_kwargs = {
             'full_name': {'source': 'get_full_name'},
             'status': {'source': 'is_online'},
+            'password': {'write_only': True,
+                         'label': 'New Password'},
         }
-        read_only_fields = ('id', 'username',)
+        read_only_fields = ('id',)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        data = getattr(self, 'initial_data', None)
+        if data and data.keys() & {'password', 'old_password'}:
+            data.setdefault('password', '')
+            data.setdefault('old_password', '')
 
     def validate_photo(self, val):
         """
@@ -37,8 +67,28 @@ class UserSerializer(S.ModelSerializer):
             os.remove(photo.path)
         return val
 
+    def validate_old_password(self, val):
+        if not self.instance.check_password(val):
+            raise EX.ValidationError(
+                {'old_password': "Old password is not valid."})
+        return val
 
-class UserRegisterSerializer(S.ModelSerializer):
+    def validate_password(self, value):
+        if value == self.initial_data.get('old_password'):
+            raise EX.ValidationError(
+                'Your new password must be different from your current password.')
+        return super().validate_password(value)
+
+    def update(self, instance, validated_data):
+        validated_data.pop('old_password', None)
+        pwd = validated_data.pop('password', None)
+        if pwd:
+            print(pwd, 'heeeeeeeeeeere')
+            instance.set_password(pwd)
+        return super().update(instance, validated_data)
+
+
+class UserRegisterSerializer(UserEditMixin, S.ModelSerializer):
     """
     Serializer to register a user
     """
@@ -48,7 +98,7 @@ class UserRegisterSerializer(S.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('username', 'first_name', 'last_name', 'email',
+        fields = ('email', 'username',
                   'password', 'password2')
         extra_kwargs = {
             'password': {
@@ -65,24 +115,18 @@ class UserRegisterSerializer(S.ModelSerializer):
             raise S.ValidationError("Passwords didn't match!")
         return value
 
-    def validate_password(self, value):
-        """
-        Validates base password requirements of django
-        """
-        try:
-            validate_password(value)
-        except Exception as e:
-            raise S.ValidationError(e.messages)
-        return value
-
     def create(self, validated_data: dict):
         """
         Creates a new user after validation
         """
         validated_data.pop('password2')
         password = validated_data.pop('password')
-        user = User(**validated_data)
-        user.set_password(password)
+        try:
+            user = User(**validated_data)
+            user.set_password(password)
+            user.full_clean()
+        except ValidationError as e:
+            raise EX.ValidationError(e.message_dict)
         user.save()
         return user
 

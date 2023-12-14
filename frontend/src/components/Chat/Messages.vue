@@ -143,7 +143,7 @@ export default {
 }
 
 .msg-context :deep(.chat-start .chat-bubble) {
-  @apply chat-bubble-secondary rounded-l-lg;
+  @apply chat-bubble-accent text-white/90 rounded-l-lg;
 }
 
 .msg-context .messages > *:last-child:deep(.chat-start .chat-bubble) {

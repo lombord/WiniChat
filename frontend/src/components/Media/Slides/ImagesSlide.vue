@@ -1,12 +1,12 @@
 <template>
-  <div class="images-box dynamic-grid">
+  <div class="images-box dynamic-flex">
     <div
       @click="showSlide(i)"
       class="img-box group"
       v-for="(file, i) in files"
       :key="i"
     >
-      <img class="full-img prev-img" :src="file.url" />
+      <ImgAnim class="full-img prev-img" :src="file.url" />
       <div class="buttons">
         <button class="btn">
           <i class="fa-solid fa-eye"></i>
@@ -24,16 +24,17 @@
 
 <script>
 import parentMixin from "./parentMixin.js";
+import ImgAnim from "../ImgAnim.vue";
 
 export default {
   mixins: [parentMixin],
+  components: { ImgAnim },
 };
 </script>
 
 <style scoped>
-
 .images-box > * {
-  @apply relative cursor-pointer;
+  @apply relative cursor-pointer bg-base-100;
 }
 
 .buttons {
@@ -44,9 +45,7 @@ export default {
 }
 
 .buttons > * {
-  @apply bg-white/60 opacity-80 
-  active:bg-white/50 text-lg md:py-4
-  text-primary
-  hover:opacity-100 border-none;
+  @apply bg-transparent text-2xl p-0
+  text-white opacity-70 border-none;
 }
 </style>

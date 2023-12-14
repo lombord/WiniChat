@@ -76,7 +76,8 @@ class ChatLimitPagination(LimitOffsetPagination):
             if self.offset - self.limit <= 0:
                 return replace_query_param(url, self.limit_query_param, self.offset)
         except:
-            return url
+            pass
+        return url
 
 
 class ChatMixin:

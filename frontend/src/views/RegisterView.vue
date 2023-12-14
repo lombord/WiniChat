@@ -24,15 +24,13 @@ export default {
       username: {
         help_text: ["Your identifier name"],
       },
-      first_name: {},
-      last_name: {},
-
       email: {
         attrs: { type: "email" },
       },
 
       password: {
         attrs: { type: "password", autocomplete: "new-password" },
+        widget: "wPassword",
         validate() {
           if (this.value.length < 8) {
             this.errors = ["Password must be at least 8 characters!"];
@@ -45,6 +43,7 @@ export default {
         attrs: {
           type: "password",
         },
+        widget: "wPassword",
         validate(fields) {
           if (this.value !== fields.password.value) {
             this.errors = ["Passwords do not match!"];
@@ -68,9 +67,9 @@ export default {
   },
   methods: {
     userCreated() {
-      const username = this.fields.username.value;
+      const email = this.fields.email.value;
       const password = this.fields.password.value;
-      const data = { username, password };
+      const data = { email, password };
       this.login(data);
     },
   },

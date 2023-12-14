@@ -8,6 +8,15 @@
   );
 }
 
+.dynamic-flex {
+  --min-size: 150px;
+  @apply flex flex-wrap gap-1.5;
+}
+
+.dynamic-flex > * {
+  @apply flex-[1_1_var(--min-size)] min-w-[var(--min-size)];
+}
+
 .btn {
   @apply h-auto min-h-fit !important;
 }

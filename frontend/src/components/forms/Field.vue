@@ -3,7 +3,8 @@
     <label class="field-label" v-if="field.label" :for="field_id">{{
       field.label
     }}</label>
-    <TInput
+    <component
+      :is="field.widget || defaultWidget"
       class="w-full"
       :class="{ 'error-field': !isValid && !this.field.value }"
       :name="name"
@@ -23,7 +24,7 @@
 </template>
 
 <script>
-import TInput from "./TInput.vue";
+import { defineAsyncComponent } from "vue";
 
 export default {
   props: {
@@ -54,9 +55,13 @@ export default {
     field_id() {
       return `${this.name}_id`;
     },
+    defaultWidget() {
+      return "wInput";
+    },
   },
   components: {
-    TInput,
+    wInput: defineAsyncComponent(() => import("./TInput.vue")),
+    wPassword: defineAsyncComponent(() => import("./PasswordInput.vue")),
   },
   inheritAttrs: false,
 };
