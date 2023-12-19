@@ -17,7 +17,7 @@ from django.db.models.functions import Greatest, Least, Lower
 IMAGE_EXTS = {'png', 'jpg', 'jpeg', 'gif'}
 AUDIO_EXTS = {'mp3', 'ogg', 'wav', }
 VIDEO_EXTS = {'mp4', 'mkv', 'avi', 'mov',
-              'wmv', 'flv', 'webm', }
+              'wmv', 'flv', 'webm'}
 DOC_EXTS = {'doc', 'docx', 'txt', 'pdf', 'rtf', 'odt', 'ott', 'xls',
             'xlsx', 'csv', 'ppt', 'pptx', 'odp', 'ods',
             'html', 'htm', 'xml'}
@@ -237,7 +237,7 @@ class PChat(models.Model):
 
 
 def get_file_type(ext: str):
-    ext = ext.lstrip('.')
+    ext = ext.lstrip('.').lower()
     for k, v in FILE_TYPES.items():
         if ext in v:
             return k
