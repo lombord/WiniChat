@@ -78,12 +78,17 @@ class User(AbstractUser):
     """
     Main User model
     """
-    first_name = models.CharField(_('first name'), max_length=150)
-    last_name = models.CharField(_('last name'), max_length=150)
+    first_name = models.CharField(_('first name'),
+                                  max_length=150, blank=True)
+    last_name = models.CharField(_('last name'),
+                                 max_length=150, blank=True)
     bio = models.CharField(max_length=100, null=True, blank=True)
     photo = models.ImageField(upload_to=user_photo_path,
                               max_length=255,
                               default='defaults/user/default.png')
+
+    status = models.PositiveSmallIntegerField(_('user status'), default=0)
+
     chat_to = models.ManyToManyField(
         'self',
         through_fields=('from_user', 'to_user'),
@@ -91,7 +96,7 @@ class User(AbstractUser):
         symmetrical=False,
         through='PChat',
     )
-    status = models.PositiveSmallIntegerField(_('user status'), default=0)
+
     user_groups = models.ManyToManyField(
         'Group',
         through='GroupMember',
@@ -99,6 +104,9 @@ class User(AbstractUser):
         through_fields=['user', 'group'])
 
     objects = MyUserManager()
+
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = ['username',]
 
     class Meta:
         verbose_name = _("user")
@@ -112,6 +120,11 @@ class User(AbstractUser):
         indexes = [models.Index(fields=['first_name', 'last_name'],
                                 name='user_fullname_idx'),
                    models.Index(F('status').desc(), name='user_status_idx')]
+
+    def save(self, *args, **kwargs):
+        if not self.first_name:
+            self.first_name = self.username
+        super().save(*args, **kwargs)
 
     def get_chats(self) -> models.QuerySet:
         """

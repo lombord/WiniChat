@@ -130,11 +130,11 @@ export default {
 
 <style scoped>
 .chat-box {
-  @apply flex gap-2 items-start py-2 
+  @apply flex gap-2 items-start p-1.5 px-2 
   cursor-pointer
   bg-base-300/80
   focus:bg-secondary/10
-  hover:bg-primary/10 rounded-xl px-2;
+  hover:bg-primary/10 rounded-xl;
 }
 
 .chat-active {

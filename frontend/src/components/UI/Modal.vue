@@ -6,12 +6,7 @@
         class="modal-wrap"
         @click="$emit('update:show', false)"
       >
-        <div
-          :class="$attrs.class"
-          class="modal-content"
-          @click.stop
-          @mousedown.stop
-        >
+        <div @click.stop @mousedown.stop v-bind="$attrs" class="modal-content">
           <slot> </slot>
         </div>
       </div>

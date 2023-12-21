@@ -1,11 +1,11 @@
 <template>
-  <Modal class="set-box">
+  <Modal class="set-box overflow-hidden flex flex-col">
     <div class="photo-box">
       <div class="photo-wrap online avatar">
         <PhotoEdit class="w-28 photo" />
       </div>
     </div>
-    <div class="p-4 md:p-4.5">
+    <div class="p-4 md:p-4.5 flex-1 overflow-y-auto">
       <Form
         class="gap-[6px]"
         :fields="fields"
@@ -34,6 +34,10 @@ import PhotoEdit from "./PhotoEdit.vue";
 export default {
   data: () => ({
     fields: {
+      username: {
+        attrs: { placeholder: "Username" },
+        showLabel: true,
+      },
       first_name: {
         attrs: { placeholder: "First Name" },
         showLabel: true,
@@ -45,6 +49,21 @@ export default {
       bio: {
         max_length: 255,
         label: "BIO",
+        attrs: { required: false },
+      },
+      old_password: {
+        max_length: 60,
+        label: "Password",
+
+        widget: "wPassword",
+        hidden: true,
+        attrs: { required: false, placeholder: "Old Password" },
+      },
+      password: {
+        max_length: 60,
+        label: "New Password",
+        widget: "wPassword",
+        hidden: true,
         attrs: { required: false },
       },
     },
@@ -83,6 +102,9 @@ export default {
     },
 
     setInitial() {
+      for (const key in this.fields) this.fields[key].value = "";
+
+      this.setValue("username", this.user.username);
       this.setValue("first_name", this.user.first_name);
       this.setValue("last_name", this.user.last_name);
       this.setValue("bio", this.user.bio || "");

@@ -29,7 +29,7 @@
         <KeepAlive :max="3">
           <ChatSide
             class="chat-side"
-            v-show="showSide"
+            v-if="showSide"
             :key="current.id"
             :user="companion"
             :filesUrl="current.files_url"

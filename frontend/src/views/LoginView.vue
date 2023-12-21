@@ -22,11 +22,16 @@ export default {
   data() {
     return {
       fields: {
-        username: {},
+        email: {
+          attrs: {
+            type: "email",
+          },
+        },
         password: {
           attrs: {
             type: "password",
           },
+          widget: "wPassword",
         },
       },
       isSession: false,

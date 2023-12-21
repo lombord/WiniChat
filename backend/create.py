@@ -20,9 +20,15 @@ def generate_users(n: int):
         first, last = name.split(maxsplit=1)
         username = pattern.sub('', name.lower())
         email = f"{username}@gmail.com"
+        bio = fake.sentence(nb_words=rr(10, 15))
         user = User(username=username, email=email,
-                    first_name=first, last_name=last)
+                    first_name=first, last_name=last,
+                    bio=bio)
         user.set_password(pwd)
+        try:
+            user.full_clean()
+        except:
+            continue
         user.save()
 
 
@@ -30,14 +36,14 @@ def generate_messages(chat: PChat, n: int):
     users = [chat.from_user, chat.to_user]
     for _ in range(n):
         owner = choice(users)
-        msg = fake.sentence(nb_words=rr(2, 50))
+        msg = fake.sentence(nb_words=rr(20, 60))
         PMessage.objects.create(owner=owner, chat=chat, content=msg)
 
 
 def generate_chats():
     people = User.objects.all()
     for p1 in people:
-        for p2 in people.order_by('?')[:rr(3, 15)]:
+        for p2 in people.order_by('?')[:rr(10, 20)]:
             try:
                 chat = PChat.objects.create(from_user=p1, to_user=p2)
                 generate_messages(chat, rr(4, 30))

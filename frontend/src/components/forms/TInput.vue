@@ -1,6 +1,7 @@
 <template>
   <input
     class="input"
+    @keydown.stop
     type="text"
     :placeholder="$attrs.placeholder || $attrs.name"
     v-model="value"
@@ -39,7 +40,7 @@ export default {
   hover:outline-primary/80;
 }
 
-.input[disabled]{
+.input[disabled] {
   @apply outline cursor-auto 
   bg-base-200 outline-base-300
   text-base-content/60;

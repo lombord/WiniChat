@@ -38,7 +38,7 @@
         </p>
       </div>
     </div>
-    <Settings v-model:show="showSettings" />
+    <Settings v-if="showSettings" v-model:show="showSettings" />
   </div>
 </template>
 

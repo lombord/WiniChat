@@ -1,18 +1,24 @@
 <template>
   <form
     novalidate
-    class="flex flex-col gap-3"
     v-if="loaded"
     @submit.prevent="formSubmitted"
     autocomplete="on"
+    class="flex flex-col gap-3"
   >
-    <Field
-      v-for="(field, key) in fields"
-      :key="key"
-      :name="key"
-      :field="field"
-      :disabled="disabled"
-    />
+    <div
+      class="flex flex-col gap-3"
+      :class="{ 'pointer-events-none': disabled }"
+    >
+      <template v-for="(field, key) in fields" :key="key">
+        <Field
+          v-show="!field.hidden || !disabled"
+          :name="key"
+          :field="field"
+          :disabled="disabled"
+        />
+      </template>
+    </div>
     <slot name="submitBtn" :submitLabel="submitLabel">
       <button ref="submitBtn" type="submit" class="submit-btn click-anim">
         {{ submitLabel }}
@@ -83,10 +89,15 @@ export default {
   computed: {
     data() {
       // body data to send to server
-      const entries = Object.entries(this.fields).map(([key, { value }]) => [
-        key,
-        value,
-      ]);
+      const entries = Object.entries(this.fields).reduce(
+        (array, [key, field]) => {
+          if (field.attrs.required || field.value) {
+            array.push([key, field.value]);
+          }
+          return array;
+        },
+        []
+      );
       return Object.fromEntries(entries);
     },
     request() {
@@ -99,7 +110,7 @@ export default {
   methods: {
     // fetches options from given config url
     async fetchServerOptions() {
-      const promise = this.$request.options(this.config.url);
+      const promise = this.request({ url: this.config.url, method: "options" });
       const response = await this.$session.animate(promise);
       const method = this.config.method.toUpperCase();
       const options = response.data.actions[method];

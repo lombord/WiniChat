@@ -18,7 +18,7 @@ h3,
 h4,
 h5,
 h6 {
-  @apply truncate;
+  @apply truncate select-none;
   font-family: "Inter", sans-serif;
   font-weight: bold;
 }
@@ -60,7 +60,9 @@ a {
   @apply transition hover:opacity-90;
 }
 
-
+img {
+  @apply pointer-events-none select-none;
+}
 
 /* Scroll bar Styles */
 

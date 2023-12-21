@@ -336,6 +336,12 @@ export const useSessionStore = defineStore("session", {
       return this.request(config);
     },
 
+    options(url, config) {
+      (config || (config = {})).url = url;
+      config.method = "options";
+      return this.request(config);
+    },
+
     /**
      * Sends delete request to a url.
      * @param {String} url - url to send request

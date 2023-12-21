@@ -1,5 +1,5 @@
 <template>
-  <div class="dynamic-grid">
+  <div class="dynamic-flex">
     <div
       class="video-box"
       @click="showSlide(i)"

@@ -6,7 +6,7 @@
         <div class="load-anim observer"></div>
       </div>
     </template>
-    <h3 v-else class="text-5xl text-primary text-center">
+    <h3 v-else class="text-5xl text-secondary text-center">
       <i class="bi bi-folder-x"></i>
     </h3>
   </div>
@@ -57,12 +57,12 @@ export default {
   @apply pt-10 mt-6 after:loading-spinner after:w-10;
 }
 
-:deep(.dynamic-grid) {
-  --min-size: 150px;
-  @apply gap-1.5;
+:deep(:is(.dynamic-grid, .dynamic-flex)) {
+  --min-size: 180px;
+  @apply gap-0.5;
 }
 
-:deep(.dynamic-grid > *) {
+:deep(:is(.dynamic-grid, .dynamic-flex) > *) {
   @apply min-h-[250px] max-h-[300px];
 }
 </style>

@@ -169,6 +169,7 @@ export default {
   @apply btn-ghost text-4xl rounded-full
   px-10 py-5 btn-square transition text-white;
   animation: 0.4s linear 0.1s 1 forwards fade;
+  -webkit-font-smoothing: subpixel-antialiased;
 }
 
 .full-screen .toggle-btn {
