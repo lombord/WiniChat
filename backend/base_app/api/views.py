@@ -1,10 +1,14 @@
+from collections import OrderedDict
+from itertools import chain
+
 from django.db.models import Max, F, Q
-from rest_framework import generics as G
 from django.utils.functional import cached_property
+
+from rest_framework import generics as G
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.utils.urls import replace_query_param
 
-from ..models import User, FILE_TYPES, MessageFile
+from ..models import User, PChat, Group, FILE_TYPES, MessageFile
 
 from . import serializers as S
 from . import permissions as P
@@ -76,7 +80,8 @@ class ChatLimitPagination(LimitOffsetPagination):
             if self.offset - self.limit <= 0:
                 return replace_query_param(url, self.limit_query_param, self.offset)
         except:
-            return url
+            pass
+        return url
 
 
 class ChatMixin:
@@ -118,3 +123,23 @@ class ChatFilesView(ChatMixin, G.ListAPIView):
         if type_.lower() in FILE_TYPES:
             expr &= Q(file_type=type_)
         return MessageFile.objects.filter(expr)
+
+
+class AllChatsAPIView(G.ListAPIView):
+    serializer_class = S.GenericChatSerializer
+    pagination_class = LimitOffsetPagination
+
+    def get_queryset(self):
+        return self.request.user.get_generic_chats()
+
+    def paginate_queryset(self, queryset):
+        chats_ = super().paginate_queryset(queryset)
+        generics = OrderedDict((chat['id'], chat)
+                               for chat in chats_)
+        chats = {id_ for id_, chat in generics.items()
+                 if chat['type'] == 'chat'}
+        groups = generics.keys() - chats
+        qs = chain(PChat.objects.filter(id__in=chats),
+                   Group.objects.filter(id__in=groups))
+        generics.update((chat.id, chat) for chat in qs)
+        return generics.values()

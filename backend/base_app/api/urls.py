@@ -13,6 +13,8 @@ from . import viewsets as VS
 router = SimpleRouter()
 router.register('messages', VS.MessageViewSet,
                 basename='messages')
+router.register('groups', VS.GroupViewSet,
+                basename='group')
 
 token_urls = [
     path('', TokenObtainPairView.as_view(), name='token_obtain'),
@@ -34,5 +36,6 @@ urlpatterns = [
             path('files/', V.ChatFilesView.as_view(), name='chat_files'),
         ])),
     ])),
-    *router.urls,
+    path('all-chats/', V.AllChatsAPIView.as_view(), name='all-chats'),
+    * router.urls,
 ]
