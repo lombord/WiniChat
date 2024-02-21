@@ -1,13 +1,16 @@
-from channels.db import database_sync_to_async
+from urllib.parse import parse_qs
+
+from django.db import close_old_connections
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
+
 from rest_framework_simplejwt.tokens import UntypedToken
+from jwt import decode as jwt_decode
+
+from channels.db import database_sync_to_async
 from channels.middleware import BaseMiddleware
 from channels.auth import AuthMiddlewareStack
-from django.db import close_old_connections
-from urllib.parse import parse_qs
-from jwt import decode as jwt_decode
-from django.conf import settings
 
 
 @database_sync_to_async
@@ -18,7 +21,7 @@ def get_user(token_data):
     """
     try:
         return get_user_model().objects.get(pk=token_data['user_id'])
-    except:
+    except Exception as e:
         return AnonymousUser()
 
 

@@ -1,8 +1,9 @@
+from django.http import HttpRequest
+from django.utils.functional import cached_property
 from django.db import transaction, IntegrityError
 from django.core.exceptions import ValidationError
 
-from rest_framework import serializers as S
-from rest_framework import exceptions as EX
+from rest_framework import serializers as S, exceptions as EX
 
 from .utils import AbsoluteURLField
 
@@ -14,6 +15,27 @@ class ReprSerializerMixin:
 
     def get_repr_fields(self):
         return {}
+
+
+class DynamicFieldsMixin:
+
+    def __init__(self, *args, **kwargs):
+        include = kwargs.pop("include", None)
+        exclude = kwargs.pop("exclude", None)
+        assert not (include and exclude), "Can't have both include and exclude!"
+        super().__init__(*args, **kwargs)
+        if include or exclude:
+            if include:
+                exclude = set(self.fields) - set(include)
+            for field_name in exclude:
+                self.fields.pop(field_name)
+
+
+class RequestMixin:
+
+    @cached_property
+    def request(self) -> HttpRequest:
+        return self.context.get("request")
 
 
 class ModelSerializerMixin:
@@ -32,51 +54,151 @@ class ModelSerializerMixin:
 
         except (EX.ValidationError, ValidationError) as exc:
             raise EX.ValidationError(detail=S.as_serializer_error(exc))
+        except IntegrityError as error:
+            raise EX.ValidationError from error
+
+    def update(self, instance, validated_data):
+        try:
+            super().update(instance, validated_data)
+        except IntegrityError as error:
+            raise EX.ValidationError from error
+        return instance
 
     def save_instance(self, instance):
         instance.save()
         return instance
 
 
-class FileMixin(metaclass=S.SerializerMetaclass):
-    url = S.FileField(source='file', read_only=True)
-
-    class Meta:
-        fields = ('id', 'file', 'url', 'file_type',
-                  'metadata', 'message')
-        read_only_fields = ('file_type', 'metadata')
-        extra_kwargs = {'message': {'write_only': True},
-                        'file': {'write_only': True}}
-
-
-class MessageMixin(metaclass=S.SerializerMetaclass):
+class ChatMixin(DynamicFieldsMixin, RequestMixin, metaclass=S.SerializerMetaclass):
     url = AbsoluteURLField()
+    latest = S.SerializerMethodField()
+    unread = S.SerializerMethodField()
 
     class Meta:
-        fields = ('id', 'url', 'owner',
-                  'content', 'files', 'seen',
-                  'created', 'edited', 'is_edited')
-        read_only_fields = ('id', 'owner', 'files')
+        fields = (
+            "type",
+            "id",
+            "unread",
+            "url",
+            "latest",
+            "created",
+        )
+        msg_serializer_class = None
+
+    @property
+    def msg_serializer_class(self):
+        return self.Meta.msg_serializer_class
+
+    def get_latest(self, chat):
+        """
+        Gets latest message from a chat
+        """
+        try:
+            msg = self.get_message(chat)
+            assert msg
+            return self.msg_serializer_class(
+                msg,
+                context=self.context,
+                exclude=(
+                    "files",
+                    "url",
+                    "edited",
+                ),
+            ).data
+        except Exception as e:
+            return None
+
+    def get_message(self, chat):
+        return chat.messages.first()
+
+    def get_unread(self, chat):
+        try:
+            return chat.unread or 0
+        except:
+            return 0
+
+
+class GroupMixin(metaclass=S.SerializerMetaclass):
+    members = S.SerializerMethodField()
+    online = S.SerializerMethodField()
+
+    def get_members(self, group):
+        return getattr(group, "members_count", 0)
+
+    def get_online(self, group):
+        return getattr(group, "online_count", 0)
+
+
+class FileMixin(metaclass=S.SerializerMetaclass):
+    url = S.FileField(source="file", read_only=True)
+
+    class Meta:
+        fields = ("id", "file", "url", "file_type", "metadata")
+        read_only_fields = ("file_type", "metadata")
+        extra_kwargs = {"file": {"write_only": True}}
+
+
+class MessageMixin(DynamicFieldsMixin, metaclass=S.SerializerMetaclass):
+    url = AbsoluteURLField()
+    owner_name = S.SerializerMethodField()
+    files = S.SerializerMethodField()
+
+    class Meta:
+        fields = (
+            "id",
+            "url",
+            "owner",
+            "owner_name",
+            "content",
+            "files",
+            "seen",
+            "created",
+            "edited",
+            "is_edited",
+        )
+        read_only_fields = ("id", "owner", "files")
+
+    def get_owner_name(self, msg):
+        try:
+            return msg.owner_name
+        except Exception as e:
+            return msg.owner.get_full_name()
+
+    def get_files(self, msg):
+        try:
+            ser_cls = self.get_file_serializer()
+            files = getattr(msg, "_cached_files", None)
+            if files is None:
+                files = list(msg.files.all())
+            assert files
+            return ser_cls(
+                instance=files, many=True, read_only=True, context=self.context
+            ).data
+        except Exception as e:
+            print(e)
 
     def create(self, validated_data: dict):
         try:
-            files = self.initial_data.getlist('files', [])
-        except:
+            files = self.initial_data.getlist("files", [])
+        except Exception as e:
             files = None
         msg = super().create(validated_data)
         if files:
             try:
-                self.create_files(files, msg)
+                [data, model] = self.validate_files(files)
+                files = model.objects.bulk_create(
+                    [model(**attrs, message=msg).before_create() for attrs in data]
+                )
+                msg._cached_files = files
             except Exception as e:
                 print(e)
         return msg
 
-    def create_files(self, files: list, msg):
-        serializer = self.get_file_serializer()(
-            data=[{'file': file, 'message': msg.pk}
-                  for file in files], many=True)
+    def validate_files(self, files: list):
+        ser_cls = self.get_file_serializer()
+        serializer = ser_cls(data=[{"file": file} for file in files], many=True)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        return serializer.validated_data, ser_cls.Meta.model
 
     def get_file_serializer(self):
         return

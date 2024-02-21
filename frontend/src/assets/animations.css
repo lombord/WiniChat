@@ -1,38 +1,64 @@
 @tailwind components;
 
-@layer components {
-  .click-anim {
-    @apply active:translate-y-0.5 !important;
-  }
+.click-anim {
+  @apply transition;
+}
+.click-anim:active {
+  transform: translateY(0.12rem) translateZ(0) !important;
+}
+
+.click-scale {
+  @apply transition;
+}
+.click-scale:active {
+  transform: scale(0.95) translateZ(0) !important;
 }
 
 .load-anim {
-  @apply relative overflow-hidden pointer-events-none;
+  @apply relative overflow-hidden pointer-events-none
+  flex items-center justify-center;
+}
+
+.load-anim {
+  @apply bg-opacity-100 !important;
 }
 
 .load-anim > * {
-  @apply invisible;
+  @apply invisible opacity-0;
 }
 
 .load-anim::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-color: inherit;
-  z-index: 100;
+  @apply content-[''] absolute inset-0 bg-inherit bg-opacity-100 z-[100];
+}
+
+.load-anim::after {
+  @apply loading;
 }
 
 .load-anim::after {
   content: "";
-  @apply loading loading-dots text-primary
-  absolute inset-0 text-center aspect-square;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 30%;
-  max-width: 100px;
-  height: 100%;
+  @apply loading-dots h-[80%]
+  max-w-[100px] w-auto
+  text-primary-medium absolute text-center;
   z-index: 101;
+}
+
+.spinner-on-load.load-anim::after {
+  @apply text-[inherit] loading-spinner;
+}
+
+.fallback-load {
+  @apply w-full h-full
+  min-h-[inherit];
+}
+
+.fallback-load::after {
+  @apply loading-spinner h-full aspect-square;
+}
+
+/* load skeleton */
+.load-sk {
+  @apply bg-base-content/25 animate-pulse;
 }
 
 .load-enter-active,
@@ -64,4 +90,45 @@
 .fade-enter-from,
 .fade-leave-to {
   @apply opacity-0;
+}
+
+.pop-enter-active,
+.pop-leave-active,
+.pop-move {
+  @apply transition;
+}
+
+.pop-enter-from,
+.pop-leave-to {
+  @apply scale-0 !important;
+}
+
+.pop-leave-to {
+  @apply opacity-0 !important;
+}
+
+.small-pop-enter-active,
+.small-pop-leave-active,
+.small-pop-move {
+  @apply transition;
+}
+
+.small-pop-enter-from,
+.small-pop-leave-to {
+  @apply scale-95 !important;
+}
+
+.small-pop-leave-to {
+  @apply opacity-0 !important;
+}
+
+.item-down-move,
+.item-down-enter-active,
+.item-down-leave-active {
+  @apply transition;
+}
+
+.item-down-enter-from,
+.item-down-leave-to {
+  @apply -translate-y-8 opacity-0;
 }

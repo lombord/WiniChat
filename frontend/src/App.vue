@@ -1,5 +1,5 @@
 <template>
-  <div v-if="loaded">
+  <div v-if="loaded" class="app-root">
     <Flashes class="z-[10000]" />
     <Session v-if="$session.isAuthenticated" />
     <Guest v-else />
@@ -36,6 +36,13 @@ export default {
   components: { Flashes, Session, Guest },
 };
 </script>
+
+<style scoped>
+.app-root {
+  @apply bg-base-300;
+  background-image: url("@/assets/images/bg-pattern.svg");
+}
+</style>
 
 <style>
 @import "@/assets/base.css";

@@ -1,23 +1,24 @@
 <template>
-  <div class="person-box">
+  <div class="person-box" @click="$profile.show(person.id)">
     <div>
-      <img class="round-img w-14" :src="person.photo" />
+      <ImgAnim class="round-img w-14" :src="person.photo" />
     </div>
     <div class="flex-1 truncate">
-      <h5 class="text-primary">
+      <h6 class="text-base-content/85">
         {{ person.full_name }}
-      </h5>
-      <h6 class="text-base-content/80">
-        <i class="fa-solid fa-at text-secondary"></i>
-        {{ person.username }}
       </h6>
+      <IdTag>
+        {{ person.username }}
+      </IdTag>
     </div>
     <div>
       <button
-        @click.once="({ target }) => $emit('chosen', person, target)"
-        class="chat-btn"
+        @click.capture.once.stop="
+          ({ target }) => $emit('pChosen', person, target)
+        "
+        class="chat-btn spinner-on-load"
       >
-        Chat
+        <i class="fa-solid fa-user-plus"></i>
       </button>
     </div>
   </div>
@@ -26,27 +27,23 @@
 <script>
 export default {
   props: {
-    person: {
+    qItem: {
       type: Object,
       required: true,
     },
   },
+
+  computed: {
+    person() {
+      return this.qItem;
+    },
+  },
+  emits: ["pChosen"],
 };
 </script>
 
 <style scoped>
-.person-box {
-  @apply px-2 py-3 bg-base-200
-  flex items-center gap-2
-  cursor-pointer
-  rounded-xl
-  hover:bg-primary/20;
-}
-
 .chat-btn {
-  @apply btn btn-primary;
-}
-.chat-btn.load-anim::after {
-  @apply text-current loading-spinner;
+  @apply btn btn-primary rounded-xl;
 }
 </style>

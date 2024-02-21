@@ -18,7 +18,7 @@ class RangeFileReader:
     def close(self):
         try:
             self.file.close()
-        except:
+        except Exception as e:
             return
 
     def __iter__(self):
@@ -56,7 +56,7 @@ async def range_serve(request: HttpRequest, *args, **kwargs):
         size = f_stat.st_size
         try:
             start, stop = parse_range(range, size)
-        except:
+        except Exception as e:
             return response
         if start > stop or stop > size:
             return HttpResponse(status=416)

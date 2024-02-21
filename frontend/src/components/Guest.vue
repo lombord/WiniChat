@@ -1,6 +1,10 @@
 <template>
   <div>
-    <router-view></router-view>
+    <RouterView v-slot="{ Component }">
+      <KeepAlive include="RegisterView,LoginView">
+        <component :is="Component" />
+      </KeepAlive>
+    </RouterView>
   </div>
 </template>
 

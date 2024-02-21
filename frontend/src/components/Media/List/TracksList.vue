@@ -37,15 +37,15 @@ export default {
 
 <style scoped>
 .tracks-list {
-  @apply max-h-[300px] max-w-sm
-  pointer-events-auto
-  p-2 overflow-y-auto flex flex-col 
-  gap-1 bg-base-300/60 backdrop-blur-xl border 
-  border-base-content/10 rounded-xl;
+  @apply max-h-[300px] border 
+  pointer-events-auto max-w-sm
+  p-1.5 overflow-y-auto flex flex-col 
+  gap-1 bg-base-300/60 backdrop-blur-2xl 
+  border-base-content/10 rounded-2xl;
 }
 
 :deep(.track-box:not(.current-track):hover) {
-  @apply bg-primary/20;
+  @apply bg-base-content/10;
 }
 
 .current-track {

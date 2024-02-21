@@ -31,8 +31,6 @@ const routes = [
   {
     path: "/",
     redirect: (to) => {
-      // the function receives the target route as the argument
-      // we return a redirect path/location here.
       return { name: "home" };
     },
   },
@@ -41,6 +39,12 @@ const routes = [
     path: "/chat/",
     name: "home",
     component: () => import("@/views/ChatView.vue"),
+  },
+
+  {
+    path: "/test/",
+    name: "test",
+    component: () => import("@/views/TestView.vue"),
   },
 
   {

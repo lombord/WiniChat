@@ -3,11 +3,15 @@
     <div class="buttons" v-for="(item, i) in menu" :key="i">
       <button
         @click="selected(item)"
-        class="menu-btn"
+        class="menu-btn btn"
+        :class="item.cls"
         :contextId="[item.label]"
       >
         <slot :name="item.label">
-          {{ item.label }}
+          <span><i :class="item.icon || 'fa-solid fa-circle'"></i></span>
+          <span>
+            {{ item.label }}
+          </span>
         </slot>
       </button>
     </div>
@@ -15,47 +19,41 @@
 </template>
 
 <script>
+import context from "./context.js";
+
 export default {
   expose: ["$el"],
-  props: {
-    menu: {
-      type: Array,
-      required: true,
-    },
-    show: {
-      type: Boolean,
-      required: true,
-    },
-  },
 
-  updated() {
-    document.addEventListener(
-      "mouseup",
-      () => this.$emit("update:show", false),
-      { once: true }
-    );
-  },
-
-  methods: {
-    selected(item) {
-      this.$emit("update:show", false);
-      item.cb && item.cb();
-      this.$nextTick(() => this.$emit("chosen"));
-    },
-  },
+  mixins: [context],
 };
 </script>
 
 <style scoped>
 .root {
-  @apply absolute p-2.5 bg-base-300/20 
-  rounded-xl overflow-hidden 
-  flex flex-col gap-2 shadow
-  z-50 backdrop-blur-xl;
+  @apply absolute p-1.5 bg-base-300/50 
+  rounded-2xl overflow-hidden backdrop-blur-xl
+  flex flex-col gap-1.5 shadow-md z-50;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
 }
 
 .menu-btn {
-  @apply btn bg-base-100/50 
-  border-base-content/[10%] w-full py-4;
+  @apply bg-base-100/50
+  flex justify-center items-center
+  text-base-content/90 px-3
+  outline outline-1 rounded-2xl
+  outline-base-content/[15%] 
+  border-none w-full py-3.5;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+}
+
+.menu-btn:is(:hover) {
+  @apply text-white/90 outline-transparent
+  bg-primary-light shadow-md;
+}
+
+.menu-btn:hover :is(*, :deep(*)) {
+  @apply text-white/90 !important;
 }
 </style>

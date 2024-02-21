@@ -7,7 +7,7 @@
         </button>
         <button
           @click="toggleState"
-          class="control-btn btn"
+          class="control-btn btn spinner-on-load"
           :class="{ 'load-anim': loading }"
         >
           <span class="toggle-icons">
@@ -20,9 +20,6 @@
           <i class="fa-solid fa-forward"></i>
         </button>
       </div>
-      <!-- <div class="text-sm w-16">
-        {{ defFormat }}
-      </div> -->
       <div class="flex-1 w-0 overflow-hidden truncate">
         <p>
           {{ trackName }}
@@ -78,21 +75,11 @@
         {{ durFormat }}
       </div>
     </div>
-    <audio
-      @play="paused = false"
-      @pause="paused = true"
-      @timeupdate="timeChanged"
-      @durationchange="durationChanged"
-      @volumechange="volumeChanged"
-      @progress="calcProgress"
-      @seeking="loading = true"
-      @waiting="loading = true"
+    <MediaTag
+      tag="audio"
       @loadeddata="dataLoaded"
-      @playing="loading = false"
-      @seeked="loading = false"
       ref="mediaElm"
       class="hidden"
-      :src="url"
     />
   </div>
 </template>
@@ -101,8 +88,9 @@
 import MediaSlider from "../Utils/MediaSlider.vue";
 import VolumeSlider from "../Utils/VolumeSlider.vue";
 import MediaView from "../MediaView.vue";
+import MediaTag from "../MediaTag.vue";
+
 export default {
-  expose: ["playing", "toggleState"],
   props: {
     repeat: {
       type: Boolean,
@@ -148,7 +136,6 @@ export default {
       this.$emit("update:showList", !this.showList);
     },
     dataLoaded() {
-      this.loading = false;
       this.play();
     },
   },
@@ -175,14 +162,19 @@ export default {
     "update:shuffle",
   ],
   extends: MediaView,
-  components: { MediaSlider, VolumeSlider },
+  components: { MediaTag, MediaSlider, VolumeSlider },
 };
 </script>
 
 <style scoped>
 .player-root {
-  @apply bg-base-300/80 backdrop-blur-2xl 
-  px-3 pt-1 border-b border-base-content/10;
+  @apply px-3 pt-1 border-b border-base-content/10;
+}
+
+.player-root::before {
+  @apply content-[''] 
+  inset-0 -z-10 absolute
+  bg-base-300/80 backdrop-blur-md;
 }
 
 .control-btn {
@@ -198,9 +190,6 @@ export default {
   @apply opacity-100 text-secondary;
 }
 
-.control-btn.load-anim::after {
-  @apply loading-spinner w-5;
-}
 .toggle-icons {
   @apply w-3.5 flex text-xl justify-center;
 }

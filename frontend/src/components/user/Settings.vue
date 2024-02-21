@@ -1,24 +1,27 @@
 <template>
-  <Modal class="set-box overflow-hidden flex flex-col">
+  <Modal class="set-box">
     <div class="photo-box">
       <div class="photo-wrap online avatar">
-        <PhotoEdit class="w-28 photo" />
+        <PhotoEdit class="w-28 photo" rootCls="photo-root" />
       </div>
     </div>
-    <div class="p-4 md:p-4.5 flex-1 overflow-y-auto">
-      <Form
-        class="gap-[6px]"
-        :fields="fields"
-        v-bind="$data"
-        @succeed="updateProfile"
-      >
+    <div class="p-4 mt-2 md:p-4.5 flex-1 overflow-y-auto">
+      <Form :fields="fields" v-bind="$data" @succeed="updateProfile">
         <template v-if="disabled" #submitBtn>
-          <button type="button" @click="disabled = false" class="edit-btn btn">
+          <button
+            type="button"
+            @click="disabled = false"
+            class="submit-btn mt-2"
+          >
             Edit
           </button>
         </template>
       </Form>
-      <button @click="cancelChanges" v-if="!disabled" class="btn cxl-btn">
+      <button
+        @click="cancelChanges"
+        v-if="!disabled"
+        class="cancel-btn w-btn click-anim"
+      >
         Cancel
       </button>
     </div>
@@ -26,65 +29,62 @@
 </template>
 
 <script>
+import { computed } from "vue";
+
 import Modal from "@/components/UI/Modal.vue";
-import Form from "@/components/forms/Form.vue";
+import Form from "@/components/Forms/Form.vue";
 
 import PhotoEdit from "./PhotoEdit.vue";
 
 export default {
-  data: () => ({
-    fields: {
-      username: {
-        attrs: { placeholder: "Username" },
-        showLabel: true,
+  data() {
+    const forceShow = computed(() => this.disabled);
+    return {
+      fields: {
+        username: {
+          attrs: { placeholder: "Username" },
+          max_length: 40,
+        },
+        first_name: {
+          attrs: { placeholder: "First Name" },
+          max_length: 50,
+        },
+        last_name: {
+          attrs: { placeholder: "Last Name" },
+          max_length: 50,
+        },
+        bio: {
+          max_length: 500,
+          widget: "wText",
+          attrs: { required: false },
+        },
+        old_password: {
+          max_length: 60,
+          widget: "wPassword",
+          hidden: forceShow,
+          attrs: { required: false, placeholder: "Old Password" },
+        },
+        password: {
+          max_length: 60,
+          widget: "wPassword",
+          hidden: forceShow,
+          attrs: { required: false },
+        },
       },
-      first_name: {
-        attrs: { placeholder: "First Name" },
-        showLabel: true,
+      submitLabel: "save",
+      config: {
+        url: "session/",
+        method: "patch",
       },
-      last_name: {
-        attrs: { placeholder: "Last Name" },
-        showLabel: true,
-      },
-      bio: {
-        max_length: 255,
-        label: "BIO",
-        attrs: { required: false },
-      },
-      old_password: {
-        max_length: 60,
-        label: "Password",
-
-        widget: "wPassword",
-        hidden: true,
-        attrs: { required: false, placeholder: "Old Password" },
-      },
-      password: {
-        max_length: 60,
-        label: "New Password",
-        widget: "wPassword",
-        hidden: true,
-        attrs: { required: false },
-      },
-    },
-    submitLabel: "save",
-    config: {
-      url: "session/",
-      method: "patch",
-    },
-    successMessage: "Profile has been updated.",
-    fetchOptions: false,
-    disabled: true,
-  }),
+      successMessage: "Profile has been updated.",
+      fetchOptions: false,
+      disabled: true,
+    };
+  },
 
   computed: {
-    user: {
-      get() {
-        return this.$session.user;
-      },
-      set(value) {
-        this.$session.user = value;
-      },
+    user() {
+      return this.$session.user;
     },
   },
 
@@ -97,12 +97,13 @@ export default {
       this.fields[field].value = value;
     },
     updateProfile({ data }) {
-      this.user = data;
+      Object.assign(this.user, data);
       this.cancelChanges();
     },
 
     setInitial() {
-      for (const key in this.fields) this.fields[key].value = "";
+      const { fields } = this;
+      for (const key of Object.keys(fields)) fields[key].value = "";
 
       this.setValue("username", this.user.username);
       this.setValue("first_name", this.user.first_name);
@@ -121,6 +122,14 @@ export default {
 </script>
 
 <style scoped>
+:deep(.set-box) {
+  @apply overflow-hidden flex flex-col max-w-[550px] p-0;
+}
+
+:deep(.photo-root .box-wrapper::before) {
+  @apply content-none;
+}
+
 .photo-box {
   @apply py-3.5 bg-primary 
   flex justify-center;
@@ -136,23 +145,7 @@ export default {
   rounded-full z-[1];
 }
 
-.edit-btn,
-.cxl-btn {
-  @apply text-lg
-  py-2.5 normal-case;
-}
-
-.edit-btn {
-  @apply btn-primary mt-4;
-}
-
-.cxl-btn {
-  @apply btn-secondary w-full mt-2;
-}
-</style>
-
-<style>
-.set-box {
-  @apply max-w-[550px] p-0 !important;
+.cancel-btn {
+  @apply w-full btn-secondary mt-2;
 }
 </style>

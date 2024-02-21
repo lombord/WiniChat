@@ -3,7 +3,7 @@
 </template>
 
 <script>
-import ImgInput from "@/components/forms/ImgInput.vue";
+import ImgInput from "@/components/Forms/Widgets/ImgInput.vue";
 
 export default {
   computed: {

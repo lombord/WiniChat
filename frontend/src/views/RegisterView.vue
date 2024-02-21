@@ -1,11 +1,19 @@
 <template>
   <CenterBox class="min-h-screen root-box">
     <div ref="loginBox" class="main-box">
-      <h2 class="text-primary text-center mb-5 pb-2">Register</h2>
-      <Form v-bind="$data" submitLabel="Sign Up" @succeed="userCreated" />
-      <p class="text-base text-center mt-6">
+      <h2 class="text-primary-medium text-center mb-5 pb-2">Register</h2>
+      <Form
+        class="form-box"
+        v-bind="$data"
+        submitLabel="Sign Up"
+        @succeed="userCreated"
+      />
+      <p class="text-base text-center mt-6 text-base-content/80">
         Already have an account?
-        <router-link class="text-primary font-bold" :to="{ name: 'login' }">
+        <router-link
+          class="text-primary-medium font-bold"
+          :to="{ name: 'login' }"
+        >
           Login
         </router-link>
       </p>
@@ -14,24 +22,33 @@
 </template>
 
 <script>
-import Form from "@/components/forms/Form.vue";
+import Form from "@/components/Forms/Form.vue";
 import CenterBox from "@/components/UI/CenterBox.vue";
 import login from "@/mixins/login.js";
 
 export default {
+  name: "RegisterView",
+
   data: () => ({
     fields: {
       username: {
         help_text: ["Your identifier name"],
+        attrs: { checkUrl: "check-username/" },
+        widget: "wValidInput",
       },
+
       email: {
-        attrs: { type: "email" },
+        attrs: {
+          type: "email",
+          checkUrl: "check-user-email/",
+        },
+        widget: "wValidInput",
       },
 
       password: {
         attrs: { type: "password", autocomplete: "new-password" },
         widget: "wPassword",
-        validate() {
+        validate(field, fields) {
           if (this.value.length < 8) {
             this.errors = ["Password must be at least 8 characters!"];
           } else {
@@ -44,7 +61,7 @@ export default {
           type: "password",
         },
         widget: "wPassword",
-        validate(fields) {
+        validate(field, fields) {
           if (this.value !== fields.password.value) {
             this.errors = ["Passwords do not match!"];
           } else {
@@ -76,8 +93,12 @@ export default {
 };
 </script>
 
-<style>
-.root-box .center-box-slot {
-  @apply max-w-lg !important;
+<style scoped>
+.form-box.form-loading {
+  @apply min-h-[320px];
+}
+
+.form-box.load-anim::after {
+  @apply loading-dots;
 }
 </style>

@@ -3,24 +3,17 @@
     @fullscreenchange="updateFS"
     class="root-box z-0"
     :class="{ 'full-screen': fullScreen }"
+    :style="{ '--videoUrl': `url(${url})` }"
   >
-    <video
-      @play="paused = false"
-      @pause="paused = true"
-      @timeupdate="timeChanged"
-      @durationchange="durationChanged"
-      @volumechange="volumeChanged"
-      @progress="calcProgress"
-      @seeking="loading = true"
-      @waiting="loading = true"
-      @loadeddata="loading = false"
-      @playing="loading = false"
-      @seeked="loading = false"
-      poster="@/assets/images/black.jpg"
+    <MediaTag
       ref="mediaElm"
+      tag="video"
+      @loadedmetadata="resizeCV"
+      @play="drawBG"
+      @loadeddata="play"
       class="video-tag"
-      :src="url"
     />
+    <canvas ref="canvas" class="canvas"></canvas>
     <div
       class="absolute right-2 top-2 z-10 hover:opacity-100"
       :class="{ 'opacity-0': playing }"
@@ -55,7 +48,7 @@
             {{ defFormat }}
           </div>
           <div class="center-items-root">
-            <div class="pointer-events-auto">
+            <div class="pointer-events-auto flex gap-1 items-center">
               <button @click="rewind(-5)" class="icon-btn">
                 <i class="fa-solid fa-clock-rotate-left"></i>
               </button>
@@ -115,12 +108,35 @@
 import MediaSlider from "./Utils/MediaSlider.vue";
 import RangeSlider from "./Utils/RangeSlider.vue";
 import MediaView from "./MediaView.vue";
+import MediaTag from "./MediaTag.vue";
 export default {
   data: () => ({
     fullScreen: false,
   }),
 
+  computed: {
+    canvas() {
+      return this.$refs.canvas;
+    },
+
+    ctx() {
+      return this.canvas.getContext("2d");
+    },
+  },
+
   methods: {
+    resizeCV({ target }) {
+      this.canvas.width = target.videoWidth;
+      this.canvas.height = target.videoHeight;
+    },
+
+    drawBG() {
+      this.ctx.drawImage(this.mediaElm, 0, 0);
+      if (!(this.mediaElm.paused || this.mediaElm.ended)) {
+        requestAnimationFrame(this.drawBG);
+      }
+    },
+
     updateFS() {
       this.fullScreen = document.fullscreenElement;
     },
@@ -134,7 +150,7 @@ export default {
     },
   },
 
-  components: { MediaSlider, RangeSlider },
+  components: { MediaTag, MediaSlider, RangeSlider },
   extends: MediaView,
 };
 </script>
@@ -145,14 +161,25 @@ export default {
   @apply relative overflow-hidden text-white/80;
 }
 
-.video-tag {
-  @apply w-full h-full;
-}
-
 .full-screen {
   @apply fixed rounded-none bg-black m-0
   text-lg
   inset-0 max-h-none z-[1000] !important;
+}
+
+.video-tag {
+  @apply w-full max-h-[inherit] object-contain;
+}
+
+.canvas {
+  @apply absolute inset-0 
+  w-full h-full -z-10 
+  blur-lg scale-110
+  object-top;
+}
+
+.full-screen .video-tag {
+  @apply max-h-full;
 }
 
 .full-screen .icon-btn {

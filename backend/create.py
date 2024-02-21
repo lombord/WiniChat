@@ -27,7 +27,7 @@ def generate_users(n: int):
         user.set_password(pwd)
         try:
             user.full_clean()
-        except:
+        except Exception as e:
             continue
         user.save()
 
@@ -47,5 +47,5 @@ def generate_chats():
             try:
                 chat = PChat.objects.create(from_user=p1, to_user=p2)
                 generate_messages(chat, rr(4, 30))
-            except:
+            except Exception as e:
                 pass

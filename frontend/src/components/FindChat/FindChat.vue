@@ -1,29 +1,30 @@
 <template>
   <Modal class="root-box col-flex">
     <Search v-model="query" />
-    <div ref="fetchElm" class="overflow-y-auto flex-1 pr-1 relative">
-      <QPeople @chosen="startChat" v-if="dataList.length" :people="dataList">
-        <template #bottom>
-          <div v-int="loadNext" class="pt-20">
 
-            <div :key="query || 0" class="load-anim observer"></div>
-          </div>
-        </template>
-      </QPeople>
-      <div v-else class="absolute inset-0 center-content">
-        <h4  class="text-primary text-center">Empty</h4>
+    <FetchObserver ref="fetchElm" class="overflow-y-auto min-h-[130px]">
+      <QDispatch
+        v-if="dataList.length"
+        @pChosen="postChat"
+        @gChosen="joinGroup"
+        :qResult="dataList"
+      />
+      <div v-else class="min-h-[inherit] center-content">
+        <h2 class="text-secondary text-center">
+          <i class="bi bi-person-fill-x"></i>
+        </h2>
       </div>
-    </div>
+    </FetchObserver>
   </Modal>
 </template>
 
 <script>
 import Modal from "@/components/UI/Modal.vue";
-import Search from "@/components/forms/Search.vue";
+import Search from "@/components/Forms/Widgets/Search.vue";
+import fetchData from "@/mixins/fetchData.js";
+import startChat from "@/components/Chat/startChat.js";
 
-import fetchData from "@/mixins/fetchData";
-
-import QPeople from "./QPeople.vue";
+import QDispatch from "./QDispatch.vue";
 
 export default {
   data: () => ({
@@ -32,43 +33,60 @@ export default {
 
   props: {
     chats: {
-      type: Array,
+      type: Map,
       required: true,
     },
   },
 
   computed: {
-    url() {
-      return `people/?qr=${this.query}`;
+    fetchUrl() {
+      return `search/?q=${this.query}`;
     },
   },
 
   methods: {
-    async startChat({ id: to_user }, elm) {
-      const prom = this.$session.post("chats/", { to_user });
+    async processProm(prom, elm) {
       try {
-        const { data } = await this.$session.animate(prom, elm);
-        const { id: chat_id } = data;
-        this.$session.socket.sendEvent("new_chat", { chat_id });
-        this.chats.unshift(data);
-      } catch ({ response: { data } }) {
-        this.$flashes.error(data["__all__"][0]);
+        return await this.$session.animate(prom, elm);
+      } catch (err) {
+        this.$flashes.axiosError(err);
+        throw err;
+      } finally {
+        elm.setAttribute("disabled", "disabled");
       }
-      elm.setAttribute("disabled", "disabled");
+    },
+
+    postChat({ id: to_user }, elm) {
+      const prom = this.startChat(to_user);
+      this.processProm(prom, elm);
+    },
+
+    async joinGroup(url, elm) {
+      const prom = this.$session.put(url);
+      try {
+        const {
+          data: { group, member },
+        } = await this.processProm(prom, elm);
+        this.$chats.add(group);
+        this.$session.socket.sendGroupEvent({
+          event: "join",
+          group_id: group.id,
+          member: member,
+        });
+      } catch (err) {
+        console.log(err);
+      }
     },
   },
 
   watch: {
     query() {
-      if (this.controller) {
-        this.controller.abort();
-      }
       this.fetchData();
     },
   },
 
-  mixins: [fetchData],
-  components: { Modal, Search, QPeople },
+  mixins: [fetchData, startChat],
+  components: { Modal, Search, QDispatch },
 };
 </script>
 
@@ -78,6 +96,6 @@ export default {
 }
 
 .observer {
-  @apply py-4 mt-2 after:w-[30px] after:loading-spinner;
+  @apply py-4 mt-2 after:loading-spinner;
 }
 </style>

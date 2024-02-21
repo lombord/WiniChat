@@ -15,6 +15,7 @@ const mStore = useMediaStore();
 document.addEventListener("keydown", (e) => {
   const component = mStore.currentMedia;
   if (!component) return;
+  let hasAny = true;
   const { code } = e;
   const list = [code.toLowerCase()];
   e.ctrlKey && list.push("ctrl");
@@ -42,5 +43,12 @@ document.addEventListener("keydown", (e) => {
     case "arrowdown.ctrl":
       component.volume -= 5;
       break;
+    default:
+      hasAny = false;
+      break;
+  }
+  if (hasAny) {
+    e.stopPropagation();
+    e.preventDefault();
   }
 });

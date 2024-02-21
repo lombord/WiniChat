@@ -2,6 +2,7 @@
   <RangeSlider
     :min="0"
     :max="duration"
+    step="0.1"
     :style="{ '--buffered': buffered }"
     class="media-range"
   />

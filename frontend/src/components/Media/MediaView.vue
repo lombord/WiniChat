@@ -17,7 +17,7 @@ export default {
 
   computed: {
     mediaElm() {
-      return this.$refs.mediaElm;
+      return this.$refs.mediaElm.$el;
     },
 
     playing() {
@@ -25,7 +25,7 @@ export default {
     },
 
     ended() {
-      return this.duration - this.currentTime < 1;
+      return this.duration - this.currentTime <= 0;
     },
 
     durationMom() {
@@ -118,7 +118,7 @@ export default {
     },
 
     timeChanged({ target: { currentTime } }) {
-      this.currentTime = Math.floor(currentTime);
+      this.currentTime = currentTime;
     },
 
     volumeChanged() {

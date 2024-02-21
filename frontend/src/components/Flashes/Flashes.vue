@@ -1,12 +1,13 @@
 <template>
-  <div class="msg-root" v-if="flashes.length">
+  <div class="msg-root" v-if="flashes.size">
     <div class="msg-box">
       <TransitionGroup name="flash">
         <Flash
-          v-for="flash in flashes"
-          :key="flash.id"
+          v-for="[id, flash] in flashes.entries()"
+          :key="id"
           :flash="flash"
-          @remove="this.$flashes.removeFlash"
+          :flashId="id"
+          @remove="this.$flashes.removeFlash(id)"
         />
       </TransitionGroup>
     </div>
@@ -28,7 +29,7 @@ export default {
 <style scoped>
 .msg-root {
   @apply fixed w-full top-4 pointer-events-none
-   flex justify-center z-[100];
+   flex justify-center z-[100] px-2;
 }
 
 .msg-box {
@@ -44,6 +45,6 @@ export default {
 .flash-enter-from,
 .flash-leave-to {
   opacity: 0;
-  transform: translateY(-50px);
+  transform: translateY(-30px);
 }
 </style>

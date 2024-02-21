@@ -1,75 +1,46 @@
 <template>
-  <div class="chat-top">
-    <div class="chat-head">
-      <div class="user-short">
-        <div class="avatar" :class="avatarCls">
-          <div class="round-img w-16">
-            <img :src="companion.photo" />
-          </div>
-        </div>
-        <h5 class="text-primary">{{ username }}</h5>
-      </div>
-      <div>
-        <button
-          @click="$emit('update:showSide', !showSide)"
-          class="icon-btn py-2.5 px-3 opacity-60 hover:opacity-100"
-        >
-          <i
-            v-if="!showSide"
-            class="bi bi-layout-sidebar-inset-reverse py-0.5"
-          ></i>
-          <i v-else class="fa-solid fa-xmark"></i>
-        </button>
-      </div>
+  <div class="user-short" @click="$profile.show(companion.id)">
+    <UserAvatar :user="companion" />
+    <div>
+      <h5 class="text-primary-light">{{ username }}</h5>
+      <p class="text-base-content/80">
+        {{ status }}
+      </p>
     </div>
-    <TracksPlayer v-if="$tracks.files.length" />
   </div>
 </template>
 
 <script>
-import TracksPlayer from "@/components/Media/List/TracksPlayer.vue";
+import UserAvatar from "@/components/User/UserAvatar.vue";
+
 export default {
   props: {
-    companion: {
+    chat: {
       type: Object,
-      required: true,
-    },
-    showSide: {
-      type: Boolean,
       required: true,
     },
   },
 
   computed: {
+    companion() {
+      return this.chat.companion;
+    },
+
     username() {
       return this.companion.full_name || this.companion.username;
     },
-    avatarCls() {
+
+    status() {
       return this.companion.status ? "online" : "offline";
     },
   },
 
-  components: { TracksPlayer },
-  emits: ["update:showSide"],
+  components: { UserAvatar },
 };
 </script>
 
 <style scoped>
-.chat-top {
-  @apply sticky top-0 pointer-events-none
-  z-[10] shrink-0;
-}
-
-.chat-head {
-  @apply border-b border-base-content/10 pointer-events-auto;
-}
-
-.chat-head {
-  @apply flex items-center px-4 py-1 justify-between
- bg-base-200/50 backdrop-blur-3xl;
-}
-
 .user-short {
-  @apply flex gap-2 items-center truncate;
+  @apply flex gap-2 items-center truncate cursor-pointer;
 }
 </style>

@@ -91,17 +91,13 @@ export default {
       this.currIdx++;
     },
 
-    getRandInt(a, b) {
-      return Math.floor(Math.random() * (b - a) + a);
-    },
-
     playRandom() {
       if (this.length <= 1) {
         return;
       }
       const oldIdx = this.currIdx;
       do {
-        this.currIdx = this.getRandInt(0, this.length);
+        this.currIdx = this.$utils.randInt(this.length);
       } while (this.currIdx == oldIdx);
     },
 

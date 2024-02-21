@@ -1,65 +1,93 @@
 <template>
-  <aside class="side-root" :style="{ '--width': `${width}px` }">
+  <div class="side-root pop-btn-parent">
     <div class="m-sidebar flex flex-col">
-      <SideUser />
-      <div class="my-4">
-        <button class="find-btn tflex" @click="findShow = true">
-          <span class="text-secondary text-xl">
-            <i class="fa-solid fa-circle-nodes"></i>
-          </span>
-          Find People
-        </button>
-        <FindChat v-if="findShow" :chats="chats" v-model:show="findShow" />
-      </div>
-
-      <div
-        class="chats-box flex-1 shrink-0 overflow-y-auto pb-2"
+      <SideTop :chats="chats" />
+      <FetchObserver
+        class="chats-box"
         ref="fetchElm"
+        :hasBottom="!!next"
+        :fetchBottom="fetchNext"
       >
-        <Chats v-if="chats.length" v-bind="$attrs" :chats="chats">
-          <template #bottom>
-            <div v-int="loadNext" class="pt-10">
-              <div class="observer load-anim"></div>
-            </div>
-          </template>
-        </Chats>
+        <Chats v-if="chats.size" :chats="chats" v-model:current="currChat" />
         <h3 v-else class="text-primary text-center">Empty</h3>
-      </div>
+      </FetchObserver>
     </div>
     <div class="side-resize" @mousedown.left.capture="mouseDown = true"></div>
-  </aside>
+    <div class="pop-btn-box">
+      <button @click="showCG = true" class="pop-btn">
+        <i class="fa-solid fa-user-group"></i>
+      </button>
+    </div>
+    <CreateGroup v-if="showCG" v-model:show="showCG" />
+  </div>
 </template>
 
 <script>
 import fetchData from "@/mixins/fetchData.js";
+import CreateGroup from "@/components/Group/CreateGroup.vue";
 
-import SideUser from "./SideUser.vue";
-import FindChat from "@/components/FindChat";
 import Chats from "./Chats.vue";
+import SideTop from "./SideTop.vue";
 
 export default {
   data: () => ({
     mouseDown: false,
-    findShow: false,
-    width: 400,
-    url: "chats/",
+    width: 370,
+    showCG: false,
+    fetchUrl: "all-chats/",
   }),
+
+  props: {
+    current: {
+      type: [Object, null],
+      required: true,
+    },
+  },
 
   computed: {
     user() {
       return this.$session.user;
     },
+
     socket() {
       return this.$session.socket;
     },
-    chats() {
-      return this.dataList;
+
+    chats: {
+      get() {
+        return this.$chats.chatsMap;
+      },
+      set(val) {
+        this.$chats.chatsMap = val;
+      },
+    },
+
+    currChat: {
+      get() {
+        return this.current;
+      },
+      set(val) {
+        this.$emit("update:current", val);
+      },
     },
   },
 
   created() {
-    this.socket.onChat("last_message", this.newMessage);
-    this.socket.onChat("new_chat", ({ chat_id }) => this.fetchChat(chat_id));
+    const { socket } = this;
+    socket.onUser("new_msg", this.newMessage);
+
+    socket.onUser("new_chat", ({ type, chat_id }) => {
+      if (!this.$chats.has(type, chat_id)) {
+        this.fetchChat(type, chat_id);
+      }
+    });
+    socket.onUser("remove_chat", ({ type, chat_id }) =>
+      this.$chats.remove(type, chat_id)
+    );
+    socket.onUser("group_update", ({ group_id, data }) => {
+      const group = this.$chats.get("group", group_id);
+      if (group) Object.assign(group, data);
+    });
   },
 
   mounted() {
@@ -67,13 +95,45 @@ export default {
   },
 
   beforeUnmount() {
+    const { socket } = this;
     try {
-      this.socket.removeChatCB("last_message", this.newMessage);
+      socket.removeUserEvent("new_msg");
+      socket.removeUserEvent("new_chat");
+      socket.removeUserEvent("remove_chat");
+      socket.removeUserEvent("group_update");
     } catch (error) {}
     this.removeListeners();
   },
 
   methods: {
+    firstAdd(data) {
+      this.chats = new Map();
+      this.addNext(data);
+    },
+
+    addNext(data) {
+      for (const chat of data) {
+        this.$chats.add(chat);
+      }
+    },
+
+    newMessage({ type, chat_id, data }) {
+      const chat = this.$chats.get(type, chat_id);
+      if (chat) {
+        chat.latest = data;
+        data.owner !== this.user.id && chat.unread++;
+      } else this.fetchChat(type, chat_id);
+    },
+
+    async fetchChat(type, chat_id) {
+      let url = `chats/${chat_id}/`;
+      if (type == "group") {
+        url = `groups/${chat_id}/`;
+      }
+      const { data } = await this.$session.get(url);
+      this.$chats.add(data);
+    },
+
     setListeners() {
       this.resize = ({ x }) => {
         if (!this.mouseDown) return;
@@ -90,25 +150,9 @@ export default {
       window.removeEventListener("mouseup", this.stop);
       window.removeEventListener("mouseleave", this.stop);
     },
-
-    newMessage(data) {
-      const { chat: chatId } = data;
-      const chat = this.chats.find(({ id }) => id === chatId);
-      if (chat) {
-        chat.latest = data;
-        chat.latest.owner !== this.user.id && chat.unread++;
-      } else this.fetchChat(chatId);
-    },
-
-    async fetchChat(chatId) {
-      const {
-        data: { results },
-      } = await this.$session.get(`chats?id=${chatId}`);
-      this.chats.push(results[0]);
-    },
   },
 
-  components: { SideUser, FindChat, Chats },
+  components: { Chats, SideTop, CreateGroup },
   mixins: [fetchData],
 };
 </script>
@@ -116,7 +160,7 @@ export default {
 <style scoped>
 .side-root {
   @apply flex relative z-[100];
-  --width: 200px;
+  --width: calc(v-bind(width) * 1px);
   width: clamp(max(100px, 10%), 35%, min(var(--width), 35%));
 }
 
@@ -126,7 +170,7 @@ export default {
 }
 
 .m-sidebar {
-  @apply p-4 px-3 md:p-6
+  @apply py-4 md:py-4
   h-screen w-full
   border-r border-base-content/10
   overflow-y-auto bg-base-200;
@@ -136,19 +180,11 @@ export default {
   @apply pb-0;
 }
 
-.find-btn {
-  @apply btn py-2.5 break-words btn-primary 
-  w-full block min-h-fit h-auto;
+.chats-box {
+  @apply flex-1 shrink-0 overflow-y-auto;
 }
 
 .chats-box.load-anim::after {
   @apply loading-ring;
-}
-
-.observer {
-  @apply py-3.5 my-2;
-}
-.observer.load-anim::after {
-  @apply loading-spinner w-[8%];
 }
 </style>

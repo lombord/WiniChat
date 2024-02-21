@@ -14,9 +14,10 @@
 }
 
 .center-box-slot {
-  @apply px-4 sm:px-7 md:px-10 py-5 sm:py-10 md:py-14 
-   dark:bg-base-100 rounded-md mx-auto max-w-md
-   border border-primary/70
-   drop-shadow;
+  @apply px-8 sm:px-10 md:px-14 
+  py-14 sm:py-16 md:py-20 
+  bg-base-100/60 backdrop-blur
+  rounded-xl mx-auto max-w-lg
+  border border-primary-medium/80;
 }
 </style>

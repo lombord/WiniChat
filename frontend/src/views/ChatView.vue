@@ -2,83 +2,69 @@
   <div class="content-div">
     <Sidebar v-model:current="current" />
     <div class="flex-1">
-      <div class="flex h-full overflow-hidden" v-if="current">
-        <div
-          @vue:mounted="scrollElm = $refs.scrollElm"
-          @scroll="$refs.messages.scrolled"
-          class="chat-center"
-          ref="scrollElm"
-        >
-          <ChatTop
-            class="z-50"
-            v-model:showSide="showSide"
-            :companion="companion"
-          />
-          <KeepAlive :max="3">
-            <component
-              class="flex-1"
-              is="Chat"
-              ref="messages"
-              :chat="current"
-              :key="current.id"
-              v-if="scrollElm"
-              :scrollElm="scrollElm"
-            />
-          </KeepAlive>
-        </div>
-        <KeepAlive :max="3">
-          <ChatSide
-            class="chat-side"
-            v-if="showSide"
-            :key="current.id"
-            :user="companion"
-            :filesUrl="current.files_url"
-          />
-        </KeepAlive>
-      </div>
+      <ChatDispatcher v-if="current" :current="current" />
       <h2 v-else class="m-auto h-full center-content">
-        <span class="badge badge-primary text-lg py-4">Select a Chat</span>
+        <span
+          class="badge bg-primary-light text-white outline-none border-none text-lg py-4"
+        >
+          Select a Chat
+        </span>
       </h2>
     </div>
+    <UserProfile
+      v-if="userId && showProfile"
+      v-model:show="showProfile"
+      :userId="userId"
+      :key="userId"
+    />
   </div>
 </template>
 
 <script>
 import Sidebar from "@/components/Sidebar";
-import Chat from "@/components/Chat";
-import ChatTop from "@/components/Chat/ChatTop.vue";
-import ChatSide from "@/components/Chat/ChatSide";
+import ChatDispatcher from "@/components/ChatDispatcher/ChatDispatcher.vue";
+import UserProfile from "@/components/User/UserProfile.vue";
 
 export default {
-  data: () => ({
-    current: null,
-    showSide: false,
-    scrollElm: null,
-  }),
-
   computed: {
-    companion() {
-      return this.current.companion;
+    userId: {
+      get() {
+        return this.$profile.current;
+      },
+      set(val) {
+        this.$profile.current = val;
+      },
+    },
+
+    current: {
+      get() {
+        return this.$chats.current;
+      },
+      set(val) {
+        this.$chats.current = val;
+      },
+    },
+
+    showProfile: {
+      get() {
+        return this.$profile.showProfile;
+      },
+      set(val) {
+        this.$profile.showProfile = val;
+      },
     },
   },
 
-  components: { Sidebar, Chat, ChatTop, ChatSide },
+  beforeMount() {
+    this.$chats.$reset();
+  },
+
+  components: { Sidebar, ChatDispatcher, UserProfile },
 };
 </script>
 
 <style scoped>
 .content-div {
   @apply flex h-screen overflow-hidden;
-}
-
-.chat-center {
-  @apply flex-1 flex flex-col overflow-y-auto;
-}
-.chat-center::-webkit-scrollbar-track {
-  @apply bg-base-200;
-}
-
-.chat-side {
-  @apply flex-[0.45] min-w-[200px] max-w-[500px];
 }
 </style>

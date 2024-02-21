@@ -1,13 +1,15 @@
 <template>
-  <div class="tabs-box">
-    <div
-      :class="{ 'active-tab': modelValue == val }"
-      @click="$emit('update:modelValue', val)"
-      v-for="({label, val }) in tabs"
-    >
-      <slot :name="val">
-        {{ label }}
-      </slot>
+  <div class="shrink-0 bg-base-300 p-2 rounded-xl">
+    <div class="tabs-box">
+      <div
+        v-for="tab in tabs"
+        :class="{ 'active-tab': modelValue == tab }"
+        @click="(e) => selected(e, tab)"
+      >
+        <slot :tab="tab">
+          {{ tab }}
+        </slot>
+      </div>
     </div>
   </div>
 </template>
@@ -24,26 +26,53 @@ export default {
     },
   },
 
+  methods: {
+    selected({ target }, tab) {
+      target.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+        inline: "center",
+      });
+      if (this.modelValue != tab) {
+        this.$emit("update:modelValue", tab);
+      }
+    },
+  },
+
   emits: ["update:modelValue"],
 };
 </script>
 
 <style scoped>
 .tabs-box {
-  @apply grid gap-2 grid-cols-[repeat(auto-fit,_minmax(0,_1fr))]
-  bg-base-300 p-2 rounded-xl;
+  --min-size: 120px;
+  @apply flex gap-2 items-center justify-start
+   overflow-hidden overflow-x-auto;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  .tabs-box {
+    scrollbar-width: none;
+  }
+}
+
+.tabs-box::-webkit-scrollbar {
+  @apply hidden;
 }
 
 .tabs-box > * {
-  @apply text-center cursor-pointer 
+  @apply flex-1
+  min-w-[--min-size] transition-transform
+  active:scale-95
+  text-center cursor-pointer 
   py-2 rounded-xl opacity-60 capitalize;
 }
 
 .tabs-box > *:not(.active-tab) {
-  @apply hover:bg-base-100 hover:opacity-100;
+  @apply bg-base-100 hover:opacity-100;
 }
 
 .active-tab {
-  @apply opacity-100 bg-primary/80 text-white;
+  @apply opacity-100 bg-primary-medium text-white;
 }
 </style>

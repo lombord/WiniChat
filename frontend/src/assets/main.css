@@ -1,3 +1,4 @@
+/* Dynamic template styles */
 .dynamic-grid {
   --min-size: 150px;
   --repeat-mode: auto-fill;
@@ -17,12 +18,66 @@
   @apply flex-[1_1_var(--min-size)] min-w-[var(--min-size)];
 }
 
+/* Template styles */
+.reverse-flex {
+  @apply flex flex-col-reverse gap-2;
+}
+
+.tflex {
+  @apply flex flex-wrap gap-2 items-center;
+}
+
+.icon-flex {
+  @apply flex items-center gap-1;
+}
+
+.col-flex {
+  @apply flex flex-col gap-2;
+}
+
+.center-content {
+  @apply flex flex-col justify-center items-center;
+}
+
+/* Buttons styles */
+
 .btn {
   @apply h-auto min-h-fit !important;
 }
 
-.btn {
-  @apply py-2.5 px-4;
+.w-btn {
+  @apply btn;
+}
+
+.w-btn {
+  @apply py-2 px-4 flex items-center gap-1
+  rounded-2xl h-auto min-h-fit
+  text-xl capitalize;
+}
+
+.pop-btn-parent {
+  @apply relative;
+}
+
+.pop-btn-box {
+  @apply absolute bottom-0 inset-x-0 z-10
+  pointer-events-none flex justify-end p-4;
+}
+
+.pop-btn {
+  @apply btn center-content;
+}
+
+.pop-btn {
+  @apply btn-primary aspect-square rounded-full delay-1000
+  text-3xl p-4 pointer-events-auto opacity-0 duration-150;
+  --pop-btn-scale: 0.25;
+  transform: scale(var(--pop-btn-scale)) translateZ(0);
+}
+
+.pop-btn-parent:is(:hover, :focus, :active) .pop-btn {
+  --pop-btn-scale: 1;
+  @apply opacity-100 delay-0;
 }
 
 .icon-btn {
@@ -30,7 +85,10 @@
 }
 
 .icon-btn {
-  @apply btn-ghost text-lg p-2.5 rounded-full;
+  @apply btn-ghost text-lg p-2.5 
+  bg-base-content/10 center-content
+  center-content
+  rounded-full aspect-square;
 }
 
 .modal-btn {
@@ -42,17 +100,26 @@
   btn-outline opacity-80 hover:opacity-100;
 }
 
-.tflex {
-  @apply flex flex-wrap gap-2 items-center;
-}
-.col-flex {
-  @apply flex flex-col gap-2;
-}
-
-.center-content {
-  @apply flex flex-col justify-center items-center;
+.input-widget {
+  @apply transition p-2.5 px-3 border-2 
+  placeholder:capitalize
+  border-base-content/15 rounded-xl
+  outline-none
+  cursor-pointer focus:cursor-text 
+  bg-base-100;
 }
 
+.input-widget:is(:hover, :focus) {
+  @apply border-primary-light;
+}
+
+.input-widget[disabled]:not([disabled="false"]) {
+  @apply cursor-auto pointer-events-none
+  bg-base-200 border-base-content/10
+  text-base-content/60;
+}
+
+/* Img styles */
 .round-img {
   @apply rounded-full shadow-sm object-cover
   aspect-square

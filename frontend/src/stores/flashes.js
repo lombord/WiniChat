@@ -5,12 +5,16 @@ import { defineStore } from "pinia";
 export const useFlashesStore = defineStore("flashes", {
   state: () => ({
     // flash messages array
-    messages: [],
+    messages: new Map(),
+    /** @type {Promise} */
     _id: 1,
+    cleanerId: null,
     // default timeout for each message
-    timeout: 4e3,
+    timeout: 3.5e3,
   }),
+
   getters: {},
+
   actions: {
     /**
      * Base alert message method.
@@ -21,17 +25,51 @@ export const useFlashesStore = defineStore("flashes", {
      * @param {String | Number} code - message code
      * @param {Number} timeout - timeout in milliseconds
      */
-    alertMessage(message, code, timeout) {
+    _alertMessage(message, code, timeout) {
       timeout = timeout || this.timeout;
       const id = this._id++;
-      this.messages.push({ id: id, message, code });
-      setTimeout(() => this.removeFlash(id), timeout);
-      return id;
+      this.messages.set(id, { message, code });
+      this.setUpCleaner();
+    },
+
+    setUpCleaner() {
+      if (!this.cleanerId) {
+        const { messages } = this;
+        const intervalId = (this.cleanerId = setInterval(() => {
+          if (!messages.size) {
+            clearInterval(intervalId);
+            this.cleanerId = null;
+            return;
+          }
+          const id = messages.keys().next().value;
+          this.removeFlash(id);
+        }, this.timeout));
+      }
+    },
+
+    stopCleaner() {},
+
+    isIterable(obj) {
+      // checks for null and undefined
+      if (obj == null) {
+        return false;
+      }
+      return typeof obj[Symbol.iterator] === "function";
+    },
+
+    async alertMessage(messages, code, timeout) {
+      if (typeof messages === "string" || !this.isIterable(messages)) {
+        messages = [messages];
+      }
+      for (const msg of messages) {
+        this._alertMessage(msg, code, timeout);
+        await new Promise((r) => setTimeout(r, 100));
+      }
     },
 
     /**
      * Alerts success message
-     * @param {String} message - message to alert
+     * @param {String | String[]} message - message(s) to alert
      */
     success(message) {
       return this.alertMessage(message, "success");
@@ -39,7 +77,7 @@ export const useFlashesStore = defineStore("flashes", {
 
     /**
      * Alerts info message
-     * @param {String} message - message to alert
+     * @param {String | String[]} message - message(s) to alert
      */
     info(message) {
       return this.alertMessage(message, "info");
@@ -47,7 +85,7 @@ export const useFlashesStore = defineStore("flashes", {
 
     /**
      * Alerts warning message
-     * @param {String} message - message to alert
+     * @param {String | String[]} message - message(s) to alert
      */
     warning(message) {
       return this.alertMessage(message, "warning");
@@ -55,30 +93,22 @@ export const useFlashesStore = defineStore("flashes", {
 
     /**
      * Alerts error message
-     * @param {String} message - message to alert
+     * @param {String | String[]} message - message(s) to alert
      */
-    error(message) {
+    error(message = "Something went wrong") {
       return this.alertMessage(message, "error");
     },
 
-    /**
-     * Alerts messages with given code and timeout
-     * @param {String[]} messages - messages to alert
-     * @param {String | Number} code - message code
-     * @param {Number} timeout - timeout in milliseconds
-     */
-    alertMessages(messages, code, timeout) {
-      messages.forEach(([message, cd]) =>
-        this.alertMessage(message, cd || code, timeout)
-      );
-    },
-
-    /**
-     * Alerts error messages with given code and timeout
-     * @param {String[]} messages - error messages to alert
-     */
-    errors(messages) {
-      messages.forEach((msg) => this.error(msg));
+    axiosError(error) {
+      console.log(error);
+      const data = error?.response?.data;
+      if (!data || typeof data == "string") {
+        this.error("Error occurred while processing the request.");
+        return;
+      }
+      for (let val of Object.values(data)) {
+        this.error(val);
+      }
     },
 
     /**
@@ -86,12 +116,15 @@ export const useFlashesStore = defineStore("flashes", {
      * @param {Number} id - message id to remove
      */
     removeFlash(id) {
-      this.messages.length <= 1 || (this._id = 1);
-      if (!this.messages.length) return;
-      this.messages.splice(
-        this.messages.findIndex((flash) => flash.id == id),
-        1
-      );
+      const messages = this.messages;
+      if (!messages.size) return;
+      messages.delete(id);
+      if (!messages.size) {
+        this._id = 1;
+        clearInterval(this.cleanerId);
+        this.cleanerId = null;
+      }
+      return true;
     },
   },
 });

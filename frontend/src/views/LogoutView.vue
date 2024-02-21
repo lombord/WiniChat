@@ -4,9 +4,12 @@
 
 <script>
 export default {
-  beforeMount() {
-    this.$session.logout();
-    this.$router.push({ name: "login" });
+  async beforeMount() {
+    if (this.$session.isAuthenticated) {
+      this.$session.logout();
+      await this.$router.push({ name: "login" });
+      this.$flashes.info("You have been logged out.");
+    }
   },
 };
 </script>

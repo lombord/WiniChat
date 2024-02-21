@@ -1,6 +1,7 @@
 <template>
+  <!-- Modal Placeholder -->
   <Transition name="modal">
-    <div v-if="show" class="modal-root">
+    <div ref="modalElm" v-show="show" class="modal-root">
       <div
         :class="rootCls"
         class="modal-wrap"
@@ -35,6 +36,42 @@ export default {
       default: "center-content",
     },
   },
+
+  computed: {
+    modalElm() {
+      return this.$refs.modalElm;
+    },
+    modalsElm() {
+      return document.getElementById("modals");
+    },
+  },
+
+  mounted() {
+    this.teleportNode();
+  },
+
+  activated() {
+    this.teleportNode();
+  },
+
+  beforeUnmount() {
+    this.clearNode();
+  },
+
+  deactivated() {
+    this.clearNode();
+  },
+
+  methods: {
+    teleportNode() {
+      this.modalsElm.appendChild(this.modalElm);
+    },
+    clearNode() {
+      if (this.modalElm.isConnected) {
+        this.modalsElm.removeChild(this.modalElm);
+      }
+    },
+  },
   mixins: ["update:show"],
   inheritAttrs: false,
 };
@@ -49,7 +86,6 @@ export default {
   @apply bg-slate-800/60
   backdrop-blur-[1px] p-3 sm:p-4
   relative
-  cursor-pointer
   min-h-screen;
 }
 
@@ -70,8 +106,7 @@ export default {
   cursor-auto
   max-h-[700px]
   max-w-2xl bg-base-100 
-  w-[min(var(--min-w),_100%)]
-  min-h-[200px];
+  w-[min(var(--min-w),_100%)];
   animation: 0.15s ease-out 0s 1 zoom;
 }
 

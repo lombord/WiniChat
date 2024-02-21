@@ -1,260 +1,487 @@
+import asyncio
 from functools import wraps
+from typing import Iterable
+from weakref import WeakSet
+
 from channels.generic import websocket as WS
 from channels.db import database_sync_to_async as DSA
+
+
+class MyLogger:
+    HEADER = "\033[95m"
+    WARNING = "\033[93m"
+    FAIL = "\033[91m"
+    BOLD = "\033[1m"
+    UNDERLINE = "\033[4m"
+
+    @classmethod
+    def warning(cls, msg):
+        print(f"{cls.WARNING}Warning:{msg}")
+
+    @classmethod
+    def error(cls, msg, prefix="Error"):
+        print(f"{cls.FAIL}{prefix}: {msg}")
 
 
 def exclude_sender(method):
     """
     Decorator to exclude sender
     """
+
     @wraps(method)
     async def wrapper(self, event: dict):
-        # event should contain channel_name to check sender
-        if self.channel_name != event.pop('channel_name', None):
+        # check if sender is not current channel
+        if self.channel_name != event.pop("channel_name", None):
             return await method(self, event)
+
     return wrapper
+
+
+class GroupConsumerMixin:
+    """
+    Group related events consumer mixin
+    """
+
+    group_layer_p = "group_%s"
+    group_event_p = "grp_%s_evt"
+
+    def __init__(self, *args, **kwargs) -> None:
+        # dict to cache joint groups
+        self.conn_groups = {}
+        super().__init__(*args, **kwargs)
+
+    async def group_handler(self, event: str, **kwargs):
+        """
+        Base handler for group events
+        """
+        await getattr(self, self.group_event_p % event)(**kwargs)
+
+    async def grp_created_evt(self, group_id, **kwargs):
+        await self.send_session_event("new_chat", self.group_data(group_id))
+
+    async def grp_update_evt(self, group_id, data, **kwargs):
+        await self.notify_members(
+            group_id, "group_update", {"group_id": group_id, "data": data}
+        )
+
+    async def grp_deleted_evt(self, group_id, people, **kwargs):
+        await self.notify_users(people, "remove_chat", self.group_data(group_id))
+
+    async def grp_connect_evt(self, group_id, **kwargs):
+        assert group_id not in self.conn_groups, (
+            "You are already connected to group: %s" % group_id
+        )
+
+        group = await self.get_group(group_id)
+        await self.join_layer(self.group_layer_p % group_id)
+        self.conn_groups[group_id] = group
+        print("%s connected to group: %s" % (self.user, group_id))
+
+    async def grp_disconnect_evt(self, group_id, **kwargs):
+        del self.conn_groups[group_id]
+        await self.leave_layer(self.group_layer_p % group_id)
+        print("%s disconnected from group: %s" % (self.user, group_id))
+
+    def group_data(self, group_id, data=None):
+        return {"type": "group", "chat_id": group_id, "data": data}
+
+    async def grp_invite_evt(self, group_id, members, **kwargs):
+        cor1 = self.notify_users(
+            map(lambda m: m["user"]["id"], members),
+            "new_chat",
+            self.group_data(group_id),
+        )
+        cor2 = self.send_group_event(group_id, "new_members", members)
+        await asyncio.gather(cor1, cor2)
+
+    async def grp_join_evt(self, group_id, member, **kwargs):
+        cor1 = self.notify_user(
+            member["user"]["id"], "new_chat", self.group_data(group_id)
+        )
+        cor2 = self.send_group_event(
+            group_id,
+            "new_members",
+            [member],
+            safe=False,
+        )
+        await asyncio.gather(cor1, cor2)
+
+    def group_leave_tasks(self, group_id, user_id):
+        cor1 = self.notify_user(user_id, "remove_chat", self.group_data(group_id))
+        cor2 = self.send_group_event(group_id, "remove_members", [user_id])
+        return [cor1, cor2]
+
+    async def grp_leave_evt(self, group_id, user_id, **kwargs):
+        await asyncio.gather(*self.group_leave_tasks(group_id, user_id))
+
+    async def grp_ban_evt(self, group_id, ban, **kwargs):
+        tasks = self.group_leave_tasks(group_id, ban["user"]["id"])
+        tasks.append(self.send_group_event(group_id, "ban", ban, exclude=False))
+        await asyncio.gather(*tasks)
+
+    async def grp_unban_evt(self, group_id, user_id, **kwargs):
+        group = self.conn_groups[group_id]
+        tasks = []
+        if await DSA(group.has_member)(user_id):
+            tasks.append(
+                self.notify_user(user_id, "new_chat", self.group_data(group_id))
+            )
+        tasks.append(self.send_group_event(group_id, "unban", user_id))
+        await asyncio.gather(*tasks)
+
+    async def grp_new_role_evt(self, group_id, role, **kwargs):
+        await self.send_group_event(group_id, "new_role", role)
+
+    async def grp_role_update_evt(self, group_id, role_id, data, **kwargs):
+        assert role_id and data
+        await self.send_group_event(
+            group_id, "role_updated", data, extra_data={"role_id": role_id}
+        )
+
+    async def grp_role_change_evt(self, group_id, user_id, data, **kwargs):
+        assert user_id and data
+        await self.send_group_event(
+            group_id, "change_role", data, extra_data={"user_id": user_id}
+        )
+
+    async def grp_role_del_evt(self, group_id, role_id, new_role, **kwargs):
+        assert role_id and new_role and isinstance(new_role, dict)
+        await self.send_group_event(
+            group_id,
+            "del_role",
+            new_role,
+            extra_data={"role_id": role_id},
+            exclude=False,
+        )
+
+    async def grp_send_evt(self, group_id, data, **kwargs):
+
+        # send new message to group listeners
+        cor1 = self.send_group_event(group_id, "new_msg", data.copy())
+        cor2 = self.notify_members(
+            group_id, "new_msg", self.group_data(group_id, data.copy())
+        )
+        await asyncio.gather(cor1, cor2)
+
+    async def grp_edit_msg_evt(self, group_id, msg_id, data, **kwargs):
+        await self.send_group_event(
+            group_id, "edit_msg", {"msg_id": msg_id, "data": data}
+        )
+
+    async def grp_del_msg_evt(self, group_id, msg_id, **kwargs):
+        await self.send_group_event(group_id, "del_msg", {"msg_id": msg_id})
+
+    # Group utility methods
+    @DSA
+    def get_group(self, group_id):
+        return self.user.allowed_groups.get(pk=group_id)
+
+    async def notify_members(
+        self, group_id, event: str, data=None, exclude: Iterable = None
+    ):
+        group = self.conn_groups[group_id]
+        qs = group.online_ids
+        if exclude:
+            qs = qs.exclude(pk__in=exclude)
+        members = await DSA(list)(qs)
+        await self.notify_users(members, event, data)
+        print(f"Notified members:\n{members}")
+
+    def get_group_layer(self, group_id):
+        layer = self.group_layer_p % group_id
+        # check if user is connected to group
+        assert layer in self.groups
+        return layer
+
+    async def send_group_event(
+        self,
+        group_id,
+        event: str,
+        data=None,
+        exclude=True,
+        safe=True,
+        extra_data=None,
+        **kwargs,
+    ):
+        """
+        Base sender for group events
+        """
+        layer = self.group_layer_p % group_id
+        if safe:
+            # check if user is connected to group
+            assert layer in self.groups
+
+        data = {"group_id": group_id, "data": data}
+        if extra_data:
+            data.update(extra_data)
+        await self.send_event(layer, "group", event, data, exclude=exclude, **kwargs)
 
 
 class ChatConsumerMixin:
     """
-    Base Chat consumer mixin to control chat related events.
+    Chat related events consumer mixin
     """
 
     # chat group pattern
-    chat_p = "chat_%s"
+    chat_layer_p = "chat_%s"
+    chat_event_p = "chat_%s_event"
 
     def __init__(self, *args, **kwargs) -> None:
         # dict to cache joint chats
-        self.joint_chats = {}
+        self.conn_chats = {}
         super().__init__(*args, **kwargs)
 
-    def validate_chat(self, chat_id):
-        group = self.chat_p % chat_id
-        # check if user is in the group
-        assert group in self.groups
-        return group
-
-    async def send_chat(self, chat_id, data: dict, **kwargs):
+    async def chat_handler(self, event: str, **kwargs):
         """
-        Controls send_chat event.
-        Sends a data if user has joint the chat
-        Args:
-            chat_id (_type_): chat_id to send a data
-            data (dict): data to send
+        Base handler for chat events
         """
+        await getattr(self, self.chat_event_p % event)(**kwargs)
 
-        group = self.validate_chat(chat_id)
+    # Chat event handlers
+    async def chat_connect_event(self, chat_id, **kwargs):
 
-        # send data to all sessions that are connected to the chat
-        await self.send_chat_event(group, 'chat_%s:new' % chat_id,
-                                   data.copy(), exclude=True)
-
-        # notify companion incase they haven't joint the chat yet
-        await self.notify_companion(chat_id, "last_message",
-                                    data.copy())
-
-    async def new_chat(self, chat_id, **kwargs):
-        await self.notify_companion(chat_id, "new_chat", {'chat_id': chat_id})
-
-    async def notify_companion(self, chat_id, event: str, data: dict):
-        """
-        Notifies companion for given chat
-        Args:
-            chat_id (_type_): chat to get companion from
-            event (str): event name to send
-            data (dict): data to send with event
-        """
-        chat = self.joint_chats.get(chat_id)
-        if not chat:
-            chat = await self.get_chat(chat_id)
-        comp_id = chat.get_companion_id(self.user.pk)
-        group = self.user_p % comp_id
-        await self.send_chat_event(group, event, data)
-
-    async def join_chat(self, chat_id, **kwargs):
-        """
-        Join a chat if user hasn't joint yet
-        Args:
-            chat_id (Any): chat to join
-        """
-        assert chat_id not in self.joint_chats
+        assert chat_id not in self.conn_chats, (
+            "You are already connected to chat: %s" % chat_id
+        )
 
         chat = await self.get_chat(chat_id)
-        await self.join_layer(self.chat_p % chat_id)
-        self.joint_chats[chat_id] = chat
-        print("%s joint the chat: %s" % (self.user, chat_id))
+        await self.join_layer(self.chat_layer_p % chat_id)
+        self.conn_chats[chat_id] = chat
+        print("%s connected to chat: %s" % (self.user, chat_id))
 
-    async def leave_chat(self, chat_id, **kwargs):
+    async def chat_disconnect_event(self, chat_id, **kwargs):
+        del self.conn_chats[chat_id]
+        await self.leave_layer(self.chat_layer_p % chat_id)
+        print("%s disconnected from chat: %s" % (self.user, chat_id))
+
+    async def chat_send_event(self, chat_id, data: dict, **kwargs):
         """
-        Leave a chat if user is in it
-        Args:
-            chat_id (Any): chat to join
+        Called when chat message is sent
         """
-        del self.joint_chats[chat_id]
-        await self.leave_layer(self.chat_p % chat_id)
-        print("%s left the chat: %s" % (self.user, chat_id))
+        # send data to all sessions that are connected to the chat
+        cor1 = self.send_chat_event(chat_id, "%s:new" % chat_id, data.copy())
 
-    async def edit_message(self, chat_id, message_id, data, **kwargs):
-        group = self.validate_chat(chat_id)
-        await self.send_chat_event(group, 'chat_%s:update' % chat_id,
-                                   {'message_id': message_id,
-                                    'data': data}, exclude=True)
+        # notify companion incase they haven't joint the chat yet
+        cor2 = self.notify_companion(
+            chat_id,
+            "new_msg",
+            {"type": "chat", "chat_id": chat_id, "data": data.copy()},
+        )
+        await asyncio.gather(cor1, cor2)
 
-    async def delete_message(self, chat_id, message_id, **kwargs):
-        group = self.validate_chat(chat_id)
-        await self.send_chat_event(group, 'chat_%s:delete' % chat_id,
-                                   {'message_id': message_id},
-                                   exclude=True)
+    async def chat_new_event(self, chat_id, **kwargs):
+        await self.notify_companion(
+            chat_id, "new_chat", {"type": "chat", "chat_id": chat_id}
+        )
 
+    async def chat_edit_msg_event(self, chat_id, msg_id, data, **kwargs):
+        await self.send_chat_event(
+            chat_id, "%s:update" % chat_id, {"msg_id": msg_id, "data": data}
+        )
+
+    async def chat_del_msg_event(self, chat_id, msg_id, **kwargs):
+        await self.send_chat_event(chat_id, "%s:delete" % chat_id, {"msg_id": msg_id})
+
+    # chat util methods
     @DSA
     def get_chat(self, chat_id):
         return self.user.get_chats().get(pk=chat_id)
 
-    async def send_chat_event(self, group: str, event: str,
-                              data: dict = None, **kwargs):
+    def get_chat_layer(self, chat_id):
+        group = self.chat_layer_p % chat_id
+        # check if user is in the group
+        assert group in self.groups
+        return group
+
+    async def notify_companion(self, chat_id, event: str, data=None):
         """
-        Base send for chat events
-        Args:
-            group (str): Group name to send an event 
-            event (str): Event name
-            data (dict, optional): Data to send with an event.
-            Defaults to None.
+        Notifies companion for given chat
         """
-        await self.send_event(group, 'chat', event, data,
-                              **kwargs)
+        chat = self.conn_chats.get(chat_id)
+        if not chat:
+            chat = await self.get_chat(chat_id)
+        await self.notify_users(chat.get_members_id(), event, data)
+
+    async def send_chat_event(
+        self, chat_id, event: str, data=None, exclude=True, **kwargs
+    ):
+        """
+        Base sender for chat events
+        """
+        group = self.get_chat_layer(chat_id)
+        await self.send_event(group, "chat", event, data, exclude=exclude, **kwargs)
 
 
-class SessionConsumer(ChatConsumerMixin, WS.AsyncJsonWebsocketConsumer):
+class UserConsumerMixin:
     """
-    Base session consumer to interact with server.
+    User related events consumer mixin
     """
 
-    # sessions group pattern
-    user_p = "user_%s"
-    # pattern for listeners of a user
-    watch_p = "watch_%s"
+    # user sessions layer
+    user_layer_p = "user_%s"
 
-    async def websocket_connect(self, message):
-        """
-        Stores user and sets groups
-        """
-        self.user = self.scope.get('user')
-        self.set_groups()
-        return await super().websocket_connect(message)
+    # user watchers layer
+    watch_layer_p = "watch_%s"
 
-    def set_groups(self):
+    user_event_p = "user_%s_event"
+
+    async def user_handler(self, event: str, **kwargs):
+        await getattr(self, self.user_event_p % event)(**kwargs)
+
+    async def user_watch_event(self, user_id, **kwargs):
+        """
+        Called to track user
+        """
+        await self.join_layer(self.watch_layer_p % user_id)
+
+    async def user_leave_event(self, user_id, **kwargs):
+        """
+        Called to untrack user
+        """
+        await self.leave_layer(self.watch_layer_p % user_id)
+
+    async def user_edit_event(self, data: dict, **kwargs):
+        """
+        Called when user profile is updated
+        """
+        await self.send_watch_event("profile_edited", data)
+
+    async def notify_user(self, user_id, event: str, data=None):
+        """
+        Called to notify the user
+        """
+        group = self.user_layer_p % user_id
+        await self.send_event(group, "user", event, data, exclude=True)
+
+    async def send_session_event(self, event: str, data=None):
+        await self.send_event(self.user_g, "user", event, data, exclude=True)
+
+    async def notify_users(self, users, event, data=None):
+        await asyncio.gather(
+            *(self.notify_user(user_id, event, data) for user_id in users)
+        )
+
+    def get_sessions_count(self):
+        """
+        Gets the number of online sessions.
+        Currently works with only 'InMemoryStorage' class
+        """
+        sessions = self.channel_layer.groups.get(self.user_g, [])
+        return len(sessions)
+
+    async def send_watch_event(self, event: str, data=None):
+        """
+        Sends event to user listeners with given data
+        """
+        data = {"user_id": self.user.pk, "data": data}
+        await self.send_event(self.watch_g, "user", event, data, exclude=True)
+
+    def set_user_groups(self):
         """
         Sets base user groups
         """
         pk = self.user.pk
         # group for user sessions
-        self.user_g = self.user_p % pk
+        self.user_g = self.user_layer_p % pk
         # group for user listeners
-        self.watch_g = self.watch_p % pk
-        self.groups = {self.user_g}
+        self.watch_g = self.watch_layer_p % pk
+        self.groups = {self.user_g, self.watch_g}
+
+
+class SessionConsumer(
+    UserConsumerMixin,
+    ChatConsumerMixin,
+    GroupConsumerMixin,
+    WS.AsyncJsonWebsocketConsumer,
+):
+    """
+    Base session consumer to interact with server.
+    """
+
+    __all_objects = WeakSet()
+    # Base event handler pattern
+    handler_p = "%s_handler"
+
+    def __new__(cls, *args, **kwargs):
+        obj = super().__new__(cls, *args, **kwargs)
+        cls.__all_objects.add(obj)
+        return obj
+
+    def __del__(self):
+        print(
+            "Session %r is disconnected" % self.channel_name,
+            "All connections: %d" % (len(self.__all_objects) - 1),
+            sep="\n",
+        )
+
+    async def websocket_connect(self, message):
+        """
+        Stores user and sets groups
+        """
+        self.user = self.scope.get("user")
+        self.set_user_groups()
+        return await super().websocket_connect(message)
 
     async def connect(self):
         """
         Accepts connection and updates user status
         """
         await self.accept()
-        await self.update_status()
-        print('Connected to %s' % self.user)
-
-    async def receive_json(self, content: dict, **kwargs):
-        """
-        Controls incoming messages and calls event handler
-        for that message
-        """
-        try:
-            await getattr(self, content.pop('event'))(**content, **kwargs)
-        except Exception as e:
-            print(e)
-
-    async def user_edit(self, data: dict, **kwargs):
-        """Session profile edit event controller.
-        Sends all changes to listeners
-        Args:
-            data (dict): user profile changes
-        """
-        await self.send_watch_event("%s_edit", data)
-
-    async def watch_user(self, user_id, **kwargs):
-        """
-        Used to track events of a user
-        """
-        await self.join_layer(self.watch_p % user_id)
-
-    async def leave_user(self, user_id, **kwargs):
-        """
-        Used to stop tracking events of a user
-        """
-        await self.leave_layer(self.watch_p % user_id)
+        print(
+            "Session %r is connected" % self.channel_name,
+            "All connections: %d" % len(self.__all_objects),
+            sep="\n",
+        )
+        cnt = self.get_sessions_count()
+        if cnt == 1:
+            await self.send_watch_event("joint")
+        await DSA(self.user.update_status)(cnt)
+        print("Connected to %s" % self.user)
 
     async def disconnect(self, code):
         """
         Updates user status before disconnect
         """
-        await self.update_status()
-        print('Disconnected from %s' % self.user)
-
-    async def update_status(self):
-        """
-        Updates user status in database.
-        if user has just joint sends listeners user_joint
-        event.
-        if user has completely left and there is no more online
-        sessions sends user_left event to listeners
-        """
         cnt = self.get_sessions_count()
-        if cnt <= 1:
-            if cnt:
-                event = "%s_joint"
-            else:
-                event = "%s_left"
-            await self.send_watch_event(event)
+        if not cnt:
+            await self.send_watch_event("left")
         await DSA(self.user.update_status)(cnt)
+        print("Disconnected from %s" % self.user)
 
-    async def send_watch_event(self, event: str, data: dict = None):
+    async def receive_json(self, content: dict, **kwargs):
         """
-        Sends event to user listeners with given data
-        Args:
-            event (str): event name
-            data (dict, optional): Data to send with event. Defaults to None.
+        Base message event handler
         """
-        event = event % self.user.pk
-        await self.send_event(self.watch_g, 'user', event, data)
+        try:
+            e_type = content.pop("event_type")
+            await getattr(self, self.handler_p % e_type)(**content, **kwargs)
+        except Exception as e:
+            MyLogger.error(e, prefix="WS Error")
 
-    async def send_event(self, group: str, event_type: str,
-                         event: str, data: dict = None,
-                         **kwargs):
+    async def send_event(
+        self, group: str, event_type: str, event: str, data=None, **kwargs
+    ):
         """
         Base event-send method
         Args:
-            group (str): group name to send event
+            group (str): group layer to send event
             event_type (str): type of event (user, chat, etc.)
             event (str): event name
             data (dict, optional): Data to send with event. Defaults to None.
         """
-        data = {'event_type': event_type,
-                'event': event,
-                'data': data}
+        data = {"event_type": event_type, "event": event, "data": data}
         await self.send_all(group, data, **kwargs)
 
     async def join_layer(self, group: str):
         """
-        Base method to join a group
-        Args:
-            group (str): group name to join. 
+        Base method to join a group layer
         """
         self.groups.add(group)
         await self.channel_layer.group_add(group, self.channel_name)
 
     async def leave_layer(self, group):
         """
-        Base method to leave a group
-        Args:
-            group (str): group name to leave. 
+        Base method to leave a group layer
         """
         self.groups.remove(group)
         await self.channel_layer.group_discard(group, self.channel_name)
@@ -270,21 +497,14 @@ class SessionConsumer(ChatConsumerMixin, WS.AsyncJsonWebsocketConsumer):
         """
         Base send-group method
         Args:
-            group (str): group name to send data
+            group (str): group layer to send event
             data (dict): data to send
-            exclude (bool, optional): if True sender. Defaults to False.
+            exclude (bool, optional): if true excludes sender.
+            Defaults to False.
         """
-        type_ = 'send.json'
+        type_ = "send.json"
         if exclude:
-            type_ = 'send.exclude'
-            data['channel_name'] = self.channel_name
-        data.setdefault('type', type_)
+            type_ = "send.exclude"
+            data["channel_name"] = self.channel_name
+        data.setdefault("type", type_)
         await self.channel_layer.group_send(group, data)
-
-    def get_sessions_count(self):
-        """
-        Gets the number of online sessions.
-        Currently works with only 'InMemoryStorage' class
-        """
-        sessions = self.channel_layer.groups.get(self.user_g, [])
-        return len(sessions)

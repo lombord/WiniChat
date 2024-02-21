@@ -4,13 +4,15 @@
     @mousedown.prevent.stop="dragOn"
     @mouseup.prevent.stop="dragOff"
     @mouseleave.prevent.stop="dragOff"
-    v-on="isDragging ? { mousemove: moveImg } : {}"
-    :style="{ '--sX': `${curX}px`, '--sY': `${curY}px` }"
-    :class="dragCls"
+    @mousemove.prevent.stop="moveImg"
+    :class="{ 'modal-drag': isDragging }"
   >
-    <div class="full-box overflow-hidden pointer-events-none select-none">
-      <ImgAnim class="full-screen-img" :src="url" alt="" />
-    </div>
+    <CanvasImg
+      boxCls="modal-img-box"
+      class="modal-img"
+      loading="eager"
+      :src="url"
+    />
     <template #buttons>
       <button
         v-if="zoom != 100 || curX || curY"
@@ -39,7 +41,7 @@
 import { ref } from "vue";
 import Modal from "@/components/UI/Modal.vue";
 import fileMixin from "@/mixins/fileMixin.js";
-import ImgAnim from "../ImgAnim.vue";
+import CanvasImg from "../Images/CanvasImg.vue";
 
 function genPropFor(name) {
   return {
@@ -70,9 +72,6 @@ export default {
     zoom: genPropFor("__zoom"),
     curX: genPropFor("__curX"),
     curY: genPropFor("__curY"),
-    dragCls() {
-      return this.isDragging && ["transition-none", "cursor-move"];
-    },
   },
 
   methods: {
@@ -91,10 +90,12 @@ export default {
       this.isDragging = false;
     },
     moveImg(e) {
-      this.curX += e.clientX - this.prevX;
-      this.curY += e.clientY - this.prevY;
-      this.prevX = e.clientX;
-      this.prevY = e.clientY;
+      if (this.isDragging) {
+        this.curX += e.clientX - this.prevX;
+        this.curY += e.clientY - this.prevY;
+        this.prevX = e.clientX;
+        this.prevY = e.clientY;
+      }
     },
 
     resetAll() {
@@ -105,7 +106,7 @@ export default {
   },
 
   mixins: [fileMixin],
-  components: { Modal, ImgAnim },
+  components: { Modal, CanvasImg },
 };
 </script>
 
@@ -113,26 +114,31 @@ export default {
 :deep(.modal-box) {
   --min-w: 900px;
   --zoom: v-bind(zoom/100);
-  --sX: 0;
-  --sY: 0;
+  --sX: calc(v-bind(curX) * 1px);
+  --sY: calc(v-bind(curY) * 1px);
   @apply p-0 animate-none 
-    duration-300
+    relative bg-transparent
+    backdrop-blur-0
+    shadow-none
     translate-x-[--sX] 
     translate-y-[--sY]
     scale-[var(--zoom)];
 }
 
-.full-box {
-  @apply overflow-hidden max-h-[600px];
+:deep(.modal-box.modal-drag) {
+  @apply transition-none cursor-move;
 }
 
-:deep(.full-screen-img) {
-  @apply object-contain rounded-3xl 
-  w-full object-center
-  max-h-[inherit];
+.modal-root {
+  @apply overflow-y-hidden;
 }
 
-:deep(.full-screen-img.placeholder) {
-  @apply min-w-[300px] min-h-[400px];
+.modal-img-box {
+  @apply overflow-hidden max-h-[600px]
+  pointer-events-none select-none;
+}
+
+.modal-img-box :deep(.img-placeholder) {
+  @apply min-w-[300px] min-h-[400px] bg-base-100;
 }
 </style>

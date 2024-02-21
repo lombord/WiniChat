@@ -6,10 +6,12 @@
 ::before,
 ::after {
   outline: none;
+  @apply select-none;
 }
 
 body {
   @apply min-h-screen;
+  font-family: "Lexend", sans-serif;
 }
 
 h1,
@@ -45,18 +47,21 @@ h6 {
 }
 
 div,
-p,
 li,
 input,
-span {
-  font-family: "Lexend", sans-serif;
-}
 p {
+  font-family: "Lexend", sans-serif;
+  /* font-family: "DM Sans", sans-serif; */
+}
+
+span,
+a,
+p,
+li {
   @apply truncate;
 }
 
 a {
-  font-family: "DM Sans", sans-serif;
   @apply transition hover:opacity-90;
 }
 
@@ -68,32 +73,49 @@ img {
 
 /* width */
 ::-webkit-scrollbar {
-  --size: clamp(0.2rem, 0.8vw, 0.4rem);
+  --size: clamp(0.2rem, 0.8vw, 0.3rem);
   width: var(--size);
   height: var(--size);
 }
 
 /* Track */
 ::-webkit-scrollbar-track {
+  @apply bg-transparent bg-clip-content;
 }
 
 /* Handle */
 ::-webkit-scrollbar-thumb {
   @apply bg-base-content invisible
-  bg-opacity-10 rounded-full 
-  max-w-[6px];
+  bg-opacity-10 rounded-full border border-red-400;
 }
 
 /* Handle on hover */
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-opacity-20;
 }
+
 *:hover::-webkit-scrollbar-thumb {
   @apply visible;
 }
 
 ::-webkit-scrollbar-thumb:active {
   @apply bg-opacity-25;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  *,
+  ::before,
+  ::after {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    transition: scrollbar-color 0.1s ease-in-out;
+  }
+
+  *:is(:hover, :focus, :active),
+  ::before:is(:hover, :focus, :active),
+  ::after:is(:hover, :focus, :active) {
+    scrollbar-color: theme("colors.base-content/20%") transparent;
+  }
 }
 
 /* end */

@@ -1,7 +1,7 @@
 <template>
   <div class="m-alert" :class="`alert-${flash.code}`">
-    <p>{{ flash.message }}</p>
-    <button class="a-btn" @click="$emit('remove', flash.id)">
+    <div>{{ flash.message }}</div>
+    <button class="a-btn" @click="$emit('remove')">
       <i class="fa-solid fa-xmark"></i>
     </button>
   </div>
@@ -21,25 +21,28 @@ export default {
 <style scoped>
 .m-alert {
   @apply py-3 justify-between flex items-start alert
-  text-white rounded-md
+  rounded-md relative overflow-hidden bg-transparent
+  text-white/90 outline-none border-none
   pointer-events-auto gap-2;
+  --bg-color: theme(colors.info);
+}
+
+.m-alert::before {
+  @apply content-[''] absolute inset-0 
+  -z-10 bg-[--bg-color] backdrop-blur brightness-[1.1];
 }
 
 .alert-success {
-  @apply bg-success;
+  --bg-color: theme(colors.success/70%);
 }
 .alert-info {
-  @apply bg-info;
+  --bg-color: theme(colors.info/70%);
 }
 .alert-warning {
-  @apply bg-warning;
+  --bg-color: theme(colors.warning/70%);
 }
 .alert-error {
-  @apply bg-rose-600;
-}
-
-.m-alert {
-  @apply bg-opacity-90;
+  --bg-color: theme(colors.error/70%);
 }
 
 .a-btn {

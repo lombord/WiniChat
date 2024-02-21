@@ -13,6 +13,7 @@
 <script>
 import AudioItem from "./AudioItem.vue";
 export default {
+  
   props: {
     files: {
       type: Array,

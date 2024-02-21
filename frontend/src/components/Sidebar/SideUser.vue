@@ -1,51 +1,46 @@
 <template>
   <div>
-    <div class="main-div">
-      <div
-        class="menu-box"
-        @mouseenter="showMenu = true"
-        @mouseleave="showMenu = false"
-      >
-        <PhotoEdit class="photo-edit" />
-        <ContextMenu class="context" v-model:show="showMenu" :menu="menu">
-          <template #theme>
-            <span class="theme-icon dark" v-if="theme == 'light'">
-              <i class="fa-solid fa-moon"></i>
-              <span class="menu-label"> Dark </span>
-            </span>
-            <span class="theme-icon light" v-else>
-              <i class="fa-solid fa-sun"></i>
-              <span class="menu-label"> Light </span>
-            </span>
-          </template>
-          <template #settings>
-            <i class="fa-solid fa-gear"></i>
-            <span class="menu-label">Settings</span>
-          </template>
-          <template #logout>
-            <i class="fa-solid fa-right-from-bracket"></i>
-            <span class="menu-label">Logout</span>
-          </template>
-        </ContextMenu>
-      </div>
+    <div
+      class="main-div"
+      @mouseenter="showMenu = true"
+      @mouseleave="showMenu = false"
+    >
+      <PhotoEdit class="photo-edit" />
       <div class="flex-1 truncate z-[100]">
-        <h5 class="text-primary">{{ name }}</h5>
-        <p class="text-base-content/80 flex font-bold gap-0.5">
-          <span class="text-secondary">
-            <i class="fa-solid fa-at"></i>
-          </span>
+        <h5 class="text-primary-light">{{ name }}</h5>
+        <IdTag>
           {{ user.username }}
-        </p>
+        </IdTag>
       </div>
+      <ContextMenu class="context" v-model:show="showMenu" :menu="menu">
+        <template #theme>
+          <template v-if="theme == 'light'">
+            <i class="fa-solid fa-moon theme-icon dark"></i>
+            <span class="menu-label theme-icon dark"> Dark </span>
+          </template>
+          <template v-else>
+            <i class="fa-solid fa-sun theme-icon light"></i>
+            <span class="menu-label theme-icon light"> Light </span>
+          </template>
+        </template>
+        <template #settings>
+          <i class="fa-solid fa-gear"></i>
+          <span class="menu-label">Settings</span>
+        </template>
+        <template #logout>
+          <i class="fa-solid fa-right-from-bracket"></i>
+          <span class="menu-label">Logout</span>
+        </template>
+      </ContextMenu>
     </div>
     <Settings v-if="showSettings" v-model:show="showSettings" />
   </div>
 </template>
 
 <script>
-import PhotoEdit from "@/components/user/PhotoEdit.vue";
+import PhotoEdit from "@/components/User/PhotoEdit.vue";
 import ContextMenu from "@/components/UI/ContextMenu.vue";
-import Settings from "@/components/user/Settings.vue";
+import Settings from "@/components/User/Settings.vue";
 
 export default {
   data: () => ({
@@ -110,8 +105,8 @@ export default {
 
 <style scoped>
 .main-div {
-  @apply flex items-center gap-2
-  relative md:gap-3;
+  @apply flex items-center gap-3
+  relative md:gap-4 pl-1 pb-1;
 }
 
 :deep(.photo-edit) {
@@ -119,12 +114,15 @@ export default {
 }
 
 .context {
-  @apply -top-2 -left-2 pt-16
-  md:pt-24 w-full max-w-sm;
+  @apply -top-2 -left-1 pt-[6.3em] w-full max-w-sm;
+}
+
+.context :deep(.menu-btn) {
+  @apply text-xl py-2.5;
 }
 
 .menu-label {
-  @apply text-sm align-middle hidden md:inline;
+  @apply text-base align-middle hidden md:inline capitalize;
 }
 
 .theme-icon.light {
@@ -138,15 +136,5 @@ export default {
 .logout-btn {
   @apply opacity-30 hover:opacity-100 
   hover:btn-primary text-xl py-2;
-}
-</style>
-
-<style>
-.context *[contextId] {
-  @apply py-3 text-xl;
-}
-
-.context *[contextId="theme"] {
-  @apply py-2.5;
 }
 </style>

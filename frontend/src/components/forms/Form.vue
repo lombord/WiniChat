@@ -1,36 +1,43 @@
 <template>
   <form
     novalidate
-    v-if="loaded"
+    :class="{ 'pointer-events-none': disabled }"
     @submit.prevent="formSubmitted"
     autocomplete="on"
-    class="flex flex-col gap-3"
+    class="col-flex form-box"
   >
-    <div
-      class="flex flex-col gap-3"
-      :class="{ 'pointer-events-none': disabled }"
-    >
-      <template v-for="(field, key) in fields" :key="key">
+    <TransitionGroup name="small-pop">
+      <template v-if="loaded" v-for="(field, key) in fields" :key="key">
         <Field
-          v-show="!field.hidden || !disabled"
+          v-if="!field.hidden"
+          :isSession="isSession"
           :name="key"
           :field="field"
           :disabled="disabled"
         />
       </template>
+    </TransitionGroup>
+
+    <div class="pointer-events-auto">
+      <slot name="submitBtn" :submitLabel="submitLabel">
+        <button
+          ref="submitBtn"
+          type="submit"
+          class="submit-btn click-anim spinner-on-load"
+        >
+          {{ submitLabel }}
+        </button>
+      </slot>
     </div>
-    <slot name="submitBtn" :submitLabel="submitLabel">
-      <button ref="submitBtn" type="submit" class="submit-btn click-anim">
-        {{ submitLabel }}
-      </button>
-    </slot>
   </form>
 </template>
 
 <script>
 import Field from "./Field.vue";
+import safeRequest from "@/mixins/safeRequest";
 
 export default {
+  expose: ["$refs", "setInitial"],
   // Form components that works with server
   data() {
     return {
@@ -39,81 +46,114 @@ export default {
   },
 
   props: {
-    // fields for form
-    fields: {
-      type: Object,
-      required: true,
-    },
-    // Label for submit button
-    submitLabel: {
-      type: String,
-      default: "Submit",
-    },
-    // axios config object
-    config: {
-      type: Object,
-    },
-    // defines whether use session request or standard
-    isSession: {
-      type: Boolean,
-      default: true,
-    },
-    // Message when the form is successfully finished
-    successMessage: {
-      type: String,
-      default: null,
-    },
-
-    // defines whether prevent send process request
-    // after client side validation
-    prevent: {
+    isEditForm: {
       type: Boolean,
       default: false,
     },
+
+    disabled: {
+      type: Boolean,
+      default: false,
+    },
+
     // defines whether fetch options from server
     fetchOptions: {
       type: Boolean,
       default: true,
     },
 
-    disabled: {
-      type: Boolean,
+    optionAction: {
+      type: String,
+      default: "POST",
     },
-  },
 
-  async created() {
-    this.fetchOptions && (await this.fetchServerOptions());
-    this.loaded = true;
+    // fields for form
+    fields: {
+      type: Object,
+      required: true,
+    },
+
+    // defines whether prevent processing request
+    // after client side validation
+    prevent: {
+      type: Boolean,
+      default: false,
+    },
+
+    // Label for submit button
+    submitLabel: {
+      type: String,
+      default: "Submit",
+    },
+
+    baseValidator: {
+      type: Function,
+      default: null,
+    },
+
+    // axios config object
+    config: {
+      type: Object,
+    },
+
+    isFormData: {
+      type: Boolean,
+      default: false,
+    },
+
+    cleanF: {
+      type: Function,
+      default: null,
+    },
+
+    getPromElm: {
+      type: Function,
+      default: null,
+    },
+
+    // Message when the form is successfully finished
+    successMessage: {
+      type: String,
+      default: null,
+    },
   },
 
   computed: {
     data() {
-      // body data to send to server
-      const entries = Object.entries(this.fields).reduce(
-        (array, [key, field]) => {
-          if (field.attrs.required || field.value) {
-            array.push([key, field.value]);
-          }
-          return array;
-        },
-        []
-      );
-      return Object.fromEntries(entries);
+      return this.isFormData ? this.getFormData() : this.getJSData();
     },
-    request() {
-      // axios request object
-      if (this.isSession) return this.$session.request;
-      return this.$request;
+
+    addCheck() {
+      return this.isEditForm ? this.editAddCheck : this.baseAddCheck;
     },
   },
 
+  async created() {
+    if (this.fetchOptions) {
+      await this.fetchServerOptions();
+    }
+    const { fields } = this;
+    for (const key of Object.keys(fields)) {
+      const field = fields[key];
+      field.initial = field.value;
+    }
+    this.loaded = true;
+  },
+
   methods: {
+    setInitial() {
+      const { fields } = this;
+      for (const key in fields) {
+        const field = fields[key];
+        field.value = field.initial;
+      }
+    },
+
     // fetches options from given config url
     async fetchServerOptions() {
       const promise = this.request({ url: this.config.url, method: "options" });
-      const response = await this.$session.animate(promise);
-      const method = this.config.method.toUpperCase();
-      const options = response.data.actions[method];
+      const response = await this.$session.animate(promise, this.$el);
+      const options = response.data.actions[this.optionAction.toUpperCase()];
       this.setServerOptions(options);
     },
 
@@ -147,67 +187,131 @@ export default {
       }
       this.$flashes.error("Form is invalid please try again!");
     },
+
     // Checks if all fields are valid
     isAllValid() {
       const isValid = Object.values(this.fields).reduce((val, field) => {
-        field.errors = [];
+        const errors = (field.errors = []);
+        const { value } = field;
 
-        if (field.attrs.required && !field.value) {
-          field.errors = ["This field is required!"];
+        if (field.attrs.required && !(value || value === false)) {
+          errors.push("This field is required!");
           return false;
         }
-        if (!field.value) return val && true;
+
+        if (!value) return val && true;
 
         const { max_length } = field;
-        if (max_length && field.value.length > max_length) {
-          field.errors = [`Max length must be ${max_length}`];
+        if (max_length && value.length > max_length) {
+          errors.push(`Max length must be ${max_length}`);
           return false;
         }
-        return val && (!field.validate || field.validate(this.fields));
+
+        return val && (!field.validate || field.validate(field, this.fields));
       }, true);
-      return isValid;
+      return isValid && (!this.baseValidator || this.baseValidator());
+    },
+
+    acquirePromElm() {
+      if (this.getPromElm) {
+        return this.getPromElm();
+      }
+      return this.$refs.submitBtn || this.$el || this.$parent.$el;
+    },
+
+    baseAddCheck(field, value) {
+      return field.attrs.required || value;
+    },
+
+    editAddCheck(field, value) {
+      return field.initial != value && this.baseAddCheck(field, value);
+    },
+
+    getFormData() {
+      const data = new FormData();
+      const { addCheck } = this;
+      for (const [key, field] of Object.entries(this.fields)) {
+        const { value } = field;
+        if (addCheck(field, value)) data.set(key, value);
+      }
+      return data;
+    },
+
+    getJSData() {
+      const data = {};
+      const { addCheck } = this;
+      for (const [key, field] of Object.entries(this.fields)) {
+        const { value } = field;
+        if (addCheck(field, value)) data[key] = value;
+      }
+      return data;
     },
 
     // submits form and emits succeed event on successful
     // response
     async submit() {
-      const config = { ...this.config, data: this.data };
+      let { data } = this;
+      if (this.cleanF) {
+        data = this.cleanF(data);
+      }
+      const config = { ...this.config, data };
       const promise = this.request(config);
-      const elm = this.$refs.submitBtn;
+      const elm = this.acquirePromElm();
       try {
         const response = await this.$session.animate(promise, elm);
         const msg = this.successMessage;
         msg && this.$flashes.success(msg);
-        this.$emit("succeed", response, this.data);
+        this.$emit("succeed", response, data);
       } catch (error) {
         this.$flashes.error("Something went wrong!");
-        this.setErrors(error.response.data);
+        this.setErrors(error?.response?.data);
+        this.$emit("error", error);
       }
     },
 
     // sets errors from response
     setErrors(errorDict) {
+      if (!(errorDict && typeof errorDict == "object")) return;
       Object.entries(errorDict).forEach(([key, errors]) => {
         const field = this.fields[key];
-        field.errors = errors;
+        if (!field) {
+          this.$flashes.error(errors);
+          return;
+        }
+        const fErrors = (field.errors = []);
+        if (typeof errors != "string") {
+          fErrors.push(...errors);
+        } else {
+          fErrors.push(errors);
+        }
       });
     },
   },
+
   components: {
     Field,
   },
+  emits: ["validated", "succeed", "error"],
+  mixins: [safeRequest],
 };
 </script>
 
 <style scoped>
-.submit-btn {
-  @apply btn btn-primary mt-2 capitalize 
-  no-animation
-  text-xl;
+@import "@/assets/main.css";
+
+.form-box {
+  @apply gap-3;
 }
 
-.submit-btn.load-anim::after {
-  @apply loading-spinner text-primary-content !important;
-  width: 8%;
+.form-box.loading-anim {
+  @apply min-h-[200px];
+}
+
+:slotted(.submit-btn) {
+  @apply w-btn;
+}
+
+:slotted(.submit-btn) {
+  @apply no-animation btn-primary w-full;
 }
 </style>

@@ -27,7 +27,7 @@ export default {
 
 <style scoped>
 .track-box {
-  @apply p-1 px-4 flex items-center gap-3 rounded-xl cursor-pointer;
+  @apply p-1 px-4 flex items-center gap-3 rounded-2xl cursor-pointer;
 }
 
 .play-btn {
