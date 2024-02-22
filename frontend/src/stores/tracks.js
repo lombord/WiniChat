@@ -1,3 +1,5 @@
+// Global store for tracks
+
 import { defineStore } from "pinia";
 
 export const useTracksStore = defineStore("tracks", {

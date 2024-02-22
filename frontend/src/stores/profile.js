@@ -1,3 +1,5 @@
+// Global store for user profile 
+
 import { defineStore } from "pinia";
 
 export const useProfileStore = defineStore("profile", {

@@ -1,3 +1,5 @@
+"""Chat WebSocket Consumers"""
+
 import asyncio
 from functools import wraps
 from typing import Iterable
@@ -38,15 +40,15 @@ def exclude_sender(method):
 
 
 class GroupConsumerMixin:
-    """
-    Group related events consumer mixin
-    """
+    """Mixin to handle group related WS events"""
 
+    # group channel layer pattern
     group_layer_p = "group_%s"
+    # group ws events pattern
     group_event_p = "grp_%s_evt"
 
     def __init__(self, *args, **kwargs) -> None:
-        # dict to cache joint groups
+        # dict to cache connected groups
         self.conn_groups = {}
         super().__init__(*args, **kwargs)
 
@@ -57,17 +59,42 @@ class GroupConsumerMixin:
         await getattr(self, self.group_event_p % event)(**kwargs)
 
     async def grp_created_evt(self, group_id, **kwargs):
+        """'Created' event handler, called when group is created
+
+        Args:
+            group_id: created group id
+        """
         await self.send_session_event("new_chat", self.group_data(group_id))
 
     async def grp_update_evt(self, group_id, data, **kwargs):
+        """'Update' event handler, called when group is edited
+
+        Args:
+            group_id: edited group id
+            data (dict): changes data
+        """
         await self.notify_members(
             group_id, "group_update", {"group_id": group_id, "data": data}
         )
 
     async def grp_deleted_evt(self, group_id, people, **kwargs):
+        """'Deleted' event handler, called when group is deleted
+
+        Args:
+            group_id: deleted group id
+            people (list[id]): list of people to notify
+        """
+
         await self.notify_users(people, "remove_chat", self.group_data(group_id))
 
     async def grp_connect_evt(self, group_id, **kwargs):
+        """'Connect' event handler, called when channel
+        wants to connect to a group
+
+        Args:
+            group_id: connecting group
+        """
+
         assert group_id not in self.conn_groups, (
             "You are already connected to group: %s" % group_id
         )
@@ -78,14 +105,29 @@ class GroupConsumerMixin:
         print("%s connected to group: %s" % (self.user, group_id))
 
     async def grp_disconnect_evt(self, group_id, **kwargs):
+        """'Disconnect' event handler, called when channel wants to
+        disconnect from a group
+
+        Args:
+            group_id: disconnecting group
+        """
+
         del self.conn_groups[group_id]
         await self.leave_layer(self.group_layer_p % group_id)
         print("%s disconnected from group: %s" % (self.user, group_id))
 
     def group_data(self, group_id, data=None):
+        """Generates group data for user events"""
         return {"type": "group", "chat_id": group_id, "data": data}
 
     async def grp_invite_evt(self, group_id, members, **kwargs):
+        """'Invite' event handler, called when users are invited to a group
+
+        Args:
+            group_id: invited group id
+            members (list): list of invited members
+        """
+
         cor1 = self.notify_users(
             map(lambda m: m["user"]["id"], members),
             "new_chat",
@@ -107,19 +149,31 @@ class GroupConsumerMixin:
         await asyncio.gather(cor1, cor2)
 
     def group_leave_tasks(self, group_id, user_id):
+        """Common tasks for leaving a group"""
         cor1 = self.notify_user(user_id, "remove_chat", self.group_data(group_id))
         cor2 = self.send_group_event(group_id, "remove_members", [user_id])
         return [cor1, cor2]
 
     async def grp_leave_evt(self, group_id, user_id, **kwargs):
+        """'Leave' event handler, called when user leaves a group
+
+        Args:
+            group_id: leaving group id
+            user_id: leaving user id
+        """
+
         await asyncio.gather(*self.group_leave_tasks(group_id, user_id))
 
     async def grp_ban_evt(self, group_id, ban, **kwargs):
+        """'Ban' event handler, called when user is banned from a group"""
+
         tasks = self.group_leave_tasks(group_id, ban["user"]["id"])
         tasks.append(self.send_group_event(group_id, "ban", ban, exclude=False))
         await asyncio.gather(*tasks)
 
     async def grp_unban_evt(self, group_id, user_id, **kwargs):
+        """'Unban' event handler, called when user is unbanned"""
+
         group = self.conn_groups[group_id]
         tasks = []
         if await DSA(group.has_member)(user_id):
@@ -130,21 +184,27 @@ class GroupConsumerMixin:
         await asyncio.gather(*tasks)
 
     async def grp_new_role_evt(self, group_id, role, **kwargs):
+        """'New Role' event handler, called when new group role is created"""
         await self.send_group_event(group_id, "new_role", role)
 
     async def grp_role_update_evt(self, group_id, role_id, data, **kwargs):
+        """'Role Update' event handler, called when group role is updated"""
+
         assert role_id and data
         await self.send_group_event(
             group_id, "role_updated", data, extra_data={"role_id": role_id}
         )
 
     async def grp_role_change_evt(self, group_id, user_id, data, **kwargs):
+        """'Role Change' event handler, called when user role is changed"""
         assert user_id and data
         await self.send_group_event(
             group_id, "change_role", data, extra_data={"user_id": user_id}
         )
 
     async def grp_role_del_evt(self, group_id, role_id, new_role, **kwargs):
+        """'Role Delete' event handler, called when group role is deleted"""
+
         assert role_id and new_role and isinstance(new_role, dict)
         await self.send_group_event(
             group_id,
@@ -155,6 +215,7 @@ class GroupConsumerMixin:
         )
 
     async def grp_send_evt(self, group_id, data, **kwargs):
+        """'Send Message' event handler, called when group message is sent"""
 
         # send new message to group listeners
         cor1 = self.send_group_event(group_id, "new_msg", data.copy())
@@ -164,6 +225,8 @@ class GroupConsumerMixin:
         await asyncio.gather(cor1, cor2)
 
     async def grp_edit_msg_evt(self, group_id, msg_id, data, **kwargs):
+        """'Edit Message' event handler, called when group message is edited"""
+
         await self.send_group_event(
             group_id, "edit_msg", {"msg_id": msg_id, "data": data}
         )
@@ -174,11 +237,20 @@ class GroupConsumerMixin:
     # Group utility methods
     @DSA
     def get_group(self, group_id):
+        """Retrieves group from DB based on group id"""
         return self.user.allowed_groups.get(pk=group_id)
 
     async def notify_members(
         self, group_id, event: str, data=None, exclude: Iterable = None
     ):
+        """Base method to notify group members
+
+        Args:
+            group_id: Group id
+            event (str): Sending event
+            data (Any): Data to send with event. Defaults to None.
+            exclude (Iterable, optional): Users to exclude. Defaults to None.
+        """
         group = self.conn_groups[group_id]
         qs = group.online_ids
         if exclude:
@@ -189,7 +261,7 @@ class GroupConsumerMixin:
 
     def get_group_layer(self, group_id):
         layer = self.group_layer_p % group_id
-        # check if user is connected to group
+        # check if user is connected to the group
         assert layer in self.groups
         return layer
 
@@ -203,8 +275,15 @@ class GroupConsumerMixin:
         extra_data=None,
         **kwargs,
     ):
-        """
-        Base sender for group events
+        """Base method to send group events to group's channel layer members.
+
+        Args:
+            group_id: Group id
+            event (str): Sending event
+            data (Any, optional): Sending data. Defaults to None.
+            exclude (bool, optional): Exclude sender?. Defaults to True.
+            safe (bool, optional): Is it safe sending?. Defaults to True.
+            extra_data (Any, optional): Extra data to send. Defaults to None.
         """
         layer = self.group_layer_p % group_id
         if safe:
@@ -219,15 +298,16 @@ class GroupConsumerMixin:
 
 class ChatConsumerMixin:
     """
-    Chat related events consumer mixin
+    Mixin to handler Private Chat related WS events
     """
 
-    # chat group pattern
+    # private chat channel layer pattern
     chat_layer_p = "chat_%s"
+    # private chat events pattern
     chat_event_p = "chat_%s_event"
 
     def __init__(self, *args, **kwargs) -> None:
-        # dict to cache joint chats
+        # dict to cache connected chats
         self.conn_chats = {}
         super().__init__(*args, **kwargs)
 
@@ -239,7 +319,13 @@ class ChatConsumerMixin:
 
     # Chat event handlers
     async def chat_connect_event(self, chat_id, **kwargs):
+        """
+        'Connect' event handler, called when channel wants to
+        connect to a chat
 
+        Args:
+            chat_id: connecting chat id
+        """
         assert chat_id not in self.conn_chats, (
             "You are already connected to chat: %s" % chat_id
         )
@@ -250,13 +336,25 @@ class ChatConsumerMixin:
         print("%s connected to chat: %s" % (self.user, chat_id))
 
     async def chat_disconnect_event(self, chat_id, **kwargs):
+        """
+        'Disconnect' event handler, called when channel wants to
+        disconnect from a chat
+
+        Args:
+            chat_id: disconnecting chat id
+        """
+
         del self.conn_chats[chat_id]
         await self.leave_layer(self.chat_layer_p % chat_id)
         print("%s disconnected from chat: %s" % (self.user, chat_id))
 
     async def chat_send_event(self, chat_id, data: dict, **kwargs):
         """
-        Called when chat message is sent
+        'Send' event handler, called when chat message is sent
+
+        Args:
+            chat_id: Chat ids
+            data (dict): Message data
         """
         # send data to all sessions that are connected to the chat
         cor1 = self.send_chat_event(chat_id, "%s:new" % chat_id, data.copy())
@@ -270,32 +368,59 @@ class ChatConsumerMixin:
         await asyncio.gather(cor1, cor2)
 
     async def chat_new_event(self, chat_id, **kwargs):
+        """
+        'New' event called, when new chat is created
+
+        Args:
+            chat_id: created chat id
+        """
+
         await self.notify_companion(
             chat_id, "new_chat", {"type": "chat", "chat_id": chat_id}
         )
 
     async def chat_edit_msg_event(self, chat_id, msg_id, data, **kwargs):
+        """
+        'Edit Message' event called, when chat messages is edited
+
+        Args:
+            chat_id: Chat id
+            msg_id (int): Edited message id
+            data (dict): Edited data
+        """
+
         await self.send_chat_event(
             chat_id, "%s:update" % chat_id, {"msg_id": msg_id, "data": data}
         )
 
     async def chat_del_msg_event(self, chat_id, msg_id, **kwargs):
+        """
+        'Delete Message' event called, when chat messages is deleted
+
+        Args:
+            chat_id: Chat id
+            msg_id (int): Deleted message id
+        """
+
         await self.send_chat_event(chat_id, "%s:delete" % chat_id, {"msg_id": msg_id})
 
-    # chat util methods
+    # chat utility methods
     @DSA
     def get_chat(self, chat_id):
+        """Retrieves chat from DB based on chat id"""
         return self.user.get_chats().get(pk=chat_id)
 
     def get_chat_layer(self, chat_id):
+        """Get chat channel layer based on chat id"""
+
         group = self.chat_layer_p % chat_id
-        # check if user is in the group
+        # check if user is in a group
         assert group in self.groups
         return group
 
     async def notify_companion(self, chat_id, event: str, data=None):
         """
-        Notifies companion for given chat
+        Notifies companion based on chat id
         """
         chat = self.conn_chats.get(chat_id)
         if not chat:
@@ -305,8 +430,13 @@ class ChatConsumerMixin:
     async def send_chat_event(
         self, chat_id, event: str, data=None, exclude=True, **kwargs
     ):
-        """
-        Base sender for chat events
+        """Base private chat event sender
+
+        Args:
+            chat_id: Chat id
+            event (str): Sending event
+            data (_type_, optional): Sending data. Defaults to None.
+            exclude (bool, optional): Exclude sender?. Defaults to True.
         """
         group = self.get_chat_layer(chat_id)
         await self.send_event(group, "chat", event, data, exclude=exclude, **kwargs)
@@ -314,18 +444,20 @@ class ChatConsumerMixin:
 
 class UserConsumerMixin:
     """
-    User related events consumer mixin
+    Mixin to handle user related WS events
     """
 
-    # user sessions layer
+    # user sessions channel layer pattern
     user_layer_p = "user_%s"
 
-    # user watchers layer
+    # user observers channel layer pattern
     watch_layer_p = "watch_%s"
 
+    # user related events pattern
     user_event_p = "user_%s_event"
 
     async def user_handler(self, event: str, **kwargs):
+        """Base user related event handler"""
         await getattr(self, self.user_event_p % event)(**kwargs)
 
     async def user_watch_event(self, user_id, **kwargs):
@@ -347,16 +479,23 @@ class UserConsumerMixin:
         await self.send_watch_event("profile_edited", data)
 
     async def notify_user(self, user_id, event: str, data=None):
-        """
-        Called to notify the user
+        """Base method to notify user
+
+        Args:
+            user_id: user's id to notify
+            event (str): Notification event
+            data (_type_, optional): Notification data. Defaults to None.
         """
         group = self.user_layer_p % user_id
         await self.send_event(group, "user", event, data, exclude=True)
 
     async def send_session_event(self, event: str, data=None):
+        """Base method to send session related events"""
         await self.send_event(self.user_g, "user", event, data, exclude=True)
 
     async def notify_users(self, users, event, data=None):
+        """Method to notify list of users[id] with given event and data"""
+
         await asyncio.gather(
             *(self.notify_user(user_id, event, data) for user_id in users)
         )
@@ -364,21 +503,19 @@ class UserConsumerMixin:
     def get_sessions_count(self):
         """
         Gets the number of online sessions.
-        Currently works with only 'InMemoryStorage' class
+        Currently works only with 'InMemoryStorage' class
         """
         sessions = self.channel_layer.groups.get(self.user_g, [])
         return len(sessions)
 
     async def send_watch_event(self, event: str, data=None):
-        """
-        Sends event to user listeners with given data
-        """
+        """Base method to send watch events"""
         data = {"user_id": self.user.pk, "data": data}
         await self.send_event(self.watch_g, "user", event, data, exclude=True)
 
     def set_user_groups(self):
         """
-        Sets base user groups
+        Sets base user channel layer groups
         """
         pk = self.user.pk
         # group for user sessions
@@ -395,10 +532,12 @@ class SessionConsumer(
     WS.AsyncJsonWebsocketConsumer,
 ):
     """
-    Base session consumer to interact with server.
+    Base session consumer that includes all types of server WS event handlers.
     """
 
+    # Set of all created session channels
     __all_objects = WeakSet()
+
     # Base event handler pattern
     handler_p = "%s_handler"
 
@@ -416,7 +555,7 @@ class SessionConsumer(
 
     async def websocket_connect(self, message):
         """
-        Stores user and sets groups
+        Stores user and sets up user channel layer groups
         """
         self.user = self.scope.get("user")
         self.set_user_groups()
@@ -440,7 +579,7 @@ class SessionConsumer(
 
     async def disconnect(self, code):
         """
-        Updates user status before disconnect
+        Updates user status and notifies user watchers before disconnect
         """
         cnt = self.get_sessions_count()
         if not cnt:
@@ -450,7 +589,8 @@ class SessionConsumer(
 
     async def receive_json(self, content: dict, **kwargs):
         """
-        Base message event handler
+        Base json message event handler.
+        Calls base event handler of received event if it exists
         """
         try:
             e_type = content.pop("event_type")
@@ -464,24 +604,24 @@ class SessionConsumer(
         """
         Base event-send method
         Args:
-            group (str): group layer to send event
-            event_type (str): type of event (user, chat, etc.)
+            group (str): group channel layer to send event
+            event_type (str): Base event type (user, chat, etc.)
             event (str): event name
-            data (dict, optional): Data to send with event. Defaults to None.
+            data (dict, optional): Sending data. Defaults to None.
         """
         data = {"event_type": event_type, "event": event, "data": data}
         await self.send_all(group, data, **kwargs)
 
     async def join_layer(self, group: str):
         """
-        Base method to join a group layer
+        Base method to join channel layer
         """
         self.groups.add(group)
         await self.channel_layer.group_add(group, self.channel_name)
 
     async def leave_layer(self, group):
         """
-        Base method to leave a group layer
+        Base method to leave channel layer
         """
         self.groups.remove(group)
         await self.channel_layer.group_discard(group, self.channel_name)
@@ -495,9 +635,9 @@ class SessionConsumer(
 
     async def send_all(self, group: str, data: dict, *, exclude=False):
         """
-        Base send-group method
+        Base send-channel-layer method
         Args:
-            group (str): group layer to send event
+            group (str): channel layer to send event
             data (dict): data to send
             exclude (bool, optional): if true excludes sender.
             Defaults to False.

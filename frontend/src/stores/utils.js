@@ -1,3 +1,5 @@
+// Global store for utility tools
+
 import { defineStore } from "pinia";
 import { markRaw, defineComponent, defineAsyncComponent } from "vue";
 

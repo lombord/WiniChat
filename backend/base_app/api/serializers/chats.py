@@ -1,3 +1,5 @@
+"""Private chat serializers"""
+
 from rest_framework import serializers as S
 
 from ...models import PChat, MessageFile, PMessage
@@ -8,6 +10,9 @@ from .mixins import ModelSerializerMixin, MessageMixin, FileMixin, ChatMixin
 
 
 class FileSerializer(FileMixin, S.ModelSerializer):
+    """
+    Serializer for files of private messages
+    """
 
     class Meta(FileMixin.Meta):
         model = MessageFile
@@ -15,7 +20,7 @@ class FileSerializer(FileMixin, S.ModelSerializer):
 
 class MessageSerializer(MessageMixin, S.ModelSerializer):
     """
-    Serializer for private messages
+    Private messages serializer
     """
 
     pass_instance = True

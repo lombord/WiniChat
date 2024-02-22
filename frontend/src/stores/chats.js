@@ -1,3 +1,5 @@
+// Global store for chats
+
 import { defineStore } from "pinia";
 
 // store to control common chat actions

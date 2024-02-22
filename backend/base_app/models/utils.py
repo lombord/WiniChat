@@ -1,3 +1,5 @@
+"""Model utility tools"""
+
 import os
 from uuid import uuid4
 from operator import attrgetter
@@ -7,12 +9,15 @@ from django.db.models import FileField
 from django.core.validators import FileExtensionValidator
 
 
+# Valid image extensions
 IMAGE_EXTS = {"png", "jpg", "jpeg", "gif"}
+# Valid audio extensions
 AUDIO_EXTS = {
     "mp3",
     "ogg",
     "wav",
 }
+# Valid video extensions
 VIDEO_EXTS = {
     "mp4",
     "mkv",
@@ -22,6 +27,7 @@ VIDEO_EXTS = {
     "flv",
     "webm",
 }
+# Valid document file extensions
 DOC_EXTS = {
     "doc",
     "docx",
@@ -43,6 +49,7 @@ DOC_EXTS = {
 }
 
 
+# Available file types
 FILE_TYPES = {
     "image": IMAGE_EXTS,
     "audio": AUDIO_EXTS,
@@ -50,10 +57,12 @@ FILE_TYPES = {
     "doc": DOC_EXTS,
 }
 
+# Main file validator
 FILE_VALIDATOR = FileExtensionValidator(IMAGE_EXTS | AUDIO_EXTS | VIDEO_EXTS)
 
 
 def get_file_type(ext: str):
+    """Returns file type based on extension if it's is valid"""
     ext = ext.lstrip(".").lower()
     for k, v in FILE_TYPES.items():
         if ext in v:
@@ -61,6 +70,7 @@ def get_file_type(ext: str):
 
 
 def delete_file(file: FileField):
+    """Deletes file based on FileField if it's not default"""
     if file and os.path.isfile(file.path):
         name = os.path.basename(file.name)
         if not name.startswith("default"):
@@ -68,6 +78,7 @@ def delete_file(file: FileField):
 
 
 def delete_old_file(model, instance, file_field: str = "file"):
+    """Deletes old file if it has been changed"""
     if not instance.pk:
         return
     try:
@@ -81,6 +92,7 @@ def delete_old_file(model, instance, file_field: str = "file"):
 
 @deconstructible
 class MessageFilePath:
+    """Creates file path generator based on prefix and dot path"""
 
     def __init__(self, prefix: str, dot_path: str):
         self.prefix = prefix

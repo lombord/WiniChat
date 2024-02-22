@@ -1,3 +1,5 @@
+"""Public group ViewSets"""
+
 from rest_framework.response import Response
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
@@ -7,6 +9,8 @@ from ..serializers import GroupSerializer, MemberSerializer, PublicGroupSerializ
 
 
 class PGroupViewSet(ReadOnlyModelViewSet):
+    """Public group ViewSet"""
+
     serializer_class = PublicGroupSerializer
     lookup_field = "pk"
     lookup_url_kwarg = "group_pk"

@@ -1,3 +1,5 @@
+// Global store for media files
+
 import { defineStore } from "pinia";
 
 export const useMediaStore = defineStore("media", {

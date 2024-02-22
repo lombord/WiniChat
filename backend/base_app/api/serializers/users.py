@@ -1,3 +1,5 @@
+"""User serializers"""
+
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
@@ -10,10 +12,11 @@ from .mixins import DynamicFieldsMixin
 
 
 class UserEditMixin:
+    """Common user editing methods mixin"""
 
     def validate_password(self, value):
         """
-        Validates base password requirements of django
+        Validates standard password requirements of django
         """
         try:
             validate_password(value)
@@ -24,7 +27,7 @@ class UserEditMixin:
 
 class UserSerializer(DynamicFieldsMixin, UserEditMixin, S.ModelSerializer):
     """
-    User serializer for update and to get main info
+    User serializer for updating and reading main info
     """
 
     url = AbsoluteURLField()
@@ -113,8 +116,8 @@ class UserRegisterSerializer(UserEditMixin, S.ModelSerializer):
         """
         Validator for password match
         """
-        password1 = self.initial_data["password"]
-        if password1 != value:
+        password = self.initial_data["password"]
+        if password != value:
             raise S.ValidationError("Passwords didn't match!")
         return value
 

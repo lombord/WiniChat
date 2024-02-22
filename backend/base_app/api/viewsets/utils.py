@@ -1,3 +1,5 @@
+"""ViewSet utility tools"""
+
 from functools import wraps
 from contextlib import contextmanager
 
@@ -6,6 +8,7 @@ from rest_framework.exceptions import PermissionDenied, APIException
 
 
 def nested_action(wrap_method=None, *, action=None, detail=False):
+    """Nested action decorator for nested viewsets"""
 
     def decorator(method):
 
@@ -32,6 +35,7 @@ def exc_manager(
     main_exc: type = PermissionDenied,
     def_exc: type = APIException,
 ):
+    """Api Exception manager to handle validations"""
     try:
         yield
     except AssertionError as msg:

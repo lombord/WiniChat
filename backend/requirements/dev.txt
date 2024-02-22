@@ -1,3 +1,7 @@
 -r common.txt
+
+# Used to automatically format python files 
 autopep8==2.0.4
+
+# Used to analyze and optimize DB queries
 django-debug-toolbar==4.2.0

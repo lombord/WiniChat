@@ -1,3 +1,5 @@
+"""Common API Views"""
+
 import re
 from itertools import chain
 
@@ -44,6 +46,7 @@ class UserRegisterAPIView(G.CreateAPIView):
 @api_view()
 @permission_classes([])
 def check_username(request: HttpRequest):
+    """API view function to validate username"""
     username = request.GET.get("q")
     is_valid = False
     if username:
@@ -58,6 +61,8 @@ def check_username(request: HttpRequest):
 @api_view()
 @permission_classes([])
 def check_user_mail(request: HttpRequest):
+    """API view function to validate user email"""
+
     email = request.GET.get("q")
     is_valid = False
     if email:
@@ -70,6 +75,8 @@ def check_user_mail(request: HttpRequest):
 
 
 class MultiSerializerMixin:
+    """Mixin to serialize multi-type model instances"""
+
     options: dict[type, dict[str]] = None
 
     def multi_serialize(self, objs, **kwargs) -> list[dict]:
@@ -87,6 +94,10 @@ class MultiSerializerMixin:
 
 
 class SearchAPIView(MultiSerializerMixin, G.ListAPIView):
+    """
+    API View to search group, user chats
+    """
+
     options = {
         "Group": {"ser": S.PublicGroupSerializer},
         "User": {"ser": S.UserSerializer},
@@ -131,6 +142,10 @@ class SearchAPIView(MultiSerializerMixin, G.ListAPIView):
 
 
 class UsersAPIView(MX.RetrieveModelMixin, MX.ListModelMixin, G.GenericAPIView):
+    """
+    API view for public user info
+    """
+
     serializer_class = S.UserSerializer
 
     def get_queryset(self):
@@ -155,7 +170,7 @@ class ChatsLimitPagination(LimitOffsetPagination):
 
 class ChatsAPIView(G.ListCreateAPIView):
     """
-    API view to get private chats that user have
+    API view to get private chats
     """
 
     serializer_class = S.ChatSerializer
@@ -180,6 +195,7 @@ class ChatsAPIView(G.ListCreateAPIView):
 
 
 class ChatMixin:
+    """Mixin for nested chat views"""
 
     @cached_property
     def chat(self):
@@ -203,6 +219,10 @@ class ChatAPIView(G.RetrieveAPIView):
 
 
 class ChatMessagesAPIView(ChatMixin, G.ListCreateAPIView):
+    """
+    API view for private chat messages
+    """
+
     serializer_class = S.MessageSerializer
     pagination_class = ChatLimitPagination
 
@@ -229,6 +249,10 @@ class ChatFilesView(ChatMixin, G.ListAPIView):
 
 
 class AllChatsAPIView(MultiSerializerMixin, G.ListAPIView):
+    """
+    API view to get all chats of a user
+    """
+
     options = {
         "Group": {"ser": S.GroupSerializer},
         "PChat": {"ser": S.ChatSerializer, "type": "chat"},

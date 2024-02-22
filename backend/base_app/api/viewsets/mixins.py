@@ -1,7 +1,9 @@
-# Mixin for nested viewsets
+"""ViewSet mixins"""
 
 
 class NestedViewSetMixin:
+    """Mixin to implement nested viewsets"""
+
     # special properties
     _action = "root"
     _curr_action = None

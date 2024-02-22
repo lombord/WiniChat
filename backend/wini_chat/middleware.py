@@ -16,11 +16,11 @@ from channels.auth import AuthMiddlewareStack
 @database_sync_to_async
 def get_user(token_data):
     """
-    Try to get user based on token_data. 
+    Try to get user based on token_data.
     If any error is encountered return AnonymousUser
     """
     try:
-        return get_user_model().objects.get(pk=token_data['user_id'])
+        return get_user_model().objects.get(pk=token_data["user_id"])
     except Exception as e:
         return AnonymousUser()
 
@@ -34,13 +34,13 @@ class JWTAuthMiddleware(BaseMiddleware):
         # Close old database connections to prevent usage of timed out connections
         close_old_connections()
         # get query byte string and decode it to normal str
-        qs = scope['query_string'].decode()
+        qs = scope["query_string"].decode()
         # parse query string to dictionary
         qr_dict = parse_qs(qs)
         # try to get and validate the token
         try:
             # get the token from parsed dictionary
-            token = qr_dict['token'][0]
+            token = qr_dict["token"][0]
             # Validate the token type
             UntypedToken(token)
         except Exception as e:
@@ -50,13 +50,13 @@ class JWTAuthMiddleware(BaseMiddleware):
         # decode the token using jwt_decode function
         token_data = jwt_decode(token, settings.SECRET_KEY, ["HS256"])
         # get user using token_data which contains user id and token info
-        scope['user'] = await get_user(token_data)
+        scope["user"] = await get_user(token_data)
         return await super().__call__(scope, receive, send)
 
 
 def JWTAuthMiddlewareStack(inner):
     """
     Stack to wrap 'AuthMiddlewareStack' stack with
-    'JWTAuthMiddleware' middleware
+    'JWTAuthMiddleware' middleware to support both authentications
     """
     return JWTAuthMiddleware(AuthMiddlewareStack(inner))

@@ -1,3 +1,5 @@
+"""General mixins for serializers"""
+
 from django.http import HttpRequest
 from django.utils.functional import cached_property
 from django.db import transaction, IntegrityError
@@ -9,19 +11,33 @@ from .utils import AbsoluteURLField
 
 
 class ReprSerializerMixin:
+    """Mixin to customize the representation serializer for fields"""
+
     def to_representation(self, args, **kwargs):
         self.fields.update(self.get_repr_fields())
         return super().to_representation(args, **kwargs)
 
     def get_repr_fields(self):
+        """
+        Hook to return representation serializers as a mapping
+        where keys are the name of the fields
+        """
         return {}
 
 
 class DynamicFieldsMixin:
+    """
+    Mixin to add dynamic fields feature
+    """
 
-    def __init__(self, *args, **kwargs):
-        include = kwargs.pop("include", None)
-        exclude = kwargs.pop("exclude", None)
+    def __init__(self, *args, include=None, exclude=None, **kwargs):
+        """Specify fields to include or exclude for serialization
+
+        Args:
+            include (list[str], optional): fields to include. Defaults to None.
+            exclude (list[str], optional): fields to exclude. Defaults to None.
+        """
+
         assert not (include and exclude), "Can't have both include and exclude!"
         super().__init__(*args, **kwargs)
         if include or exclude:
@@ -32,6 +48,7 @@ class DynamicFieldsMixin:
 
 
 class RequestMixin:
+    """Mixin to add request objet as property"""
 
     @cached_property
     def request(self) -> HttpRequest:
@@ -39,6 +56,9 @@ class RequestMixin:
 
 
 class ModelSerializerMixin:
+    """Mixin to add model level validation when creating"""
+
+    # defines whether to save and pass instance created for validation
     pass_instance = False
 
     def create(self, validated_data):
@@ -65,11 +85,14 @@ class ModelSerializerMixin:
         return instance
 
     def save_instance(self, instance):
+        """Hook to save instance"""
         instance.save()
         return instance
 
 
 class ChatMixin(DynamicFieldsMixin, RequestMixin, metaclass=S.SerializerMetaclass):
+    """Main Mixin for chats that includes common actions and fields"""
+
     url = AbsoluteURLField()
     latest = S.SerializerMethodField()
     unread = S.SerializerMethodField()
@@ -105,7 +128,7 @@ class ChatMixin(DynamicFieldsMixin, RequestMixin, metaclass=S.SerializerMetaclas
                     "edited",
                 ),
             ).data
-        except Exception as e:
+        except Exception:
             return None
 
     def get_message(self, chat):
@@ -114,11 +137,13 @@ class ChatMixin(DynamicFieldsMixin, RequestMixin, metaclass=S.SerializerMetaclas
     def get_unread(self, chat):
         try:
             return chat.unread or 0
-        except:
+        except Exception:
             return 0
 
 
 class GroupMixin(metaclass=S.SerializerMetaclass):
+    """Mixin for common group serializer fields, methods and etc."""
+
     members = S.SerializerMethodField()
     online = S.SerializerMethodField()
 
@@ -130,6 +155,8 @@ class GroupMixin(metaclass=S.SerializerMetaclass):
 
 
 class FileMixin(metaclass=S.SerializerMetaclass):
+    """Mixin for common file serializer fields, methods, etc."""
+
     url = S.FileField(source="file", read_only=True)
 
     class Meta:
@@ -139,6 +166,8 @@ class FileMixin(metaclass=S.SerializerMetaclass):
 
 
 class MessageMixin(DynamicFieldsMixin, metaclass=S.SerializerMetaclass):
+    """Mixin for common message serializer fields, methods, etc."""
+
     url = AbsoluteURLField()
     owner_name = S.SerializerMethodField()
     files = S.SerializerMethodField()
@@ -167,6 +196,7 @@ class MessageMixin(DynamicFieldsMixin, metaclass=S.SerializerMetaclass):
     def get_files(self, msg):
         try:
             ser_cls = self.get_file_serializer()
+            # try to get cached files
             files = getattr(msg, "_cached_files", None)
             if files is None:
                 files = list(msg.files.all())
@@ -178,6 +208,8 @@ class MessageMixin(DynamicFieldsMixin, metaclass=S.SerializerMetaclass):
             print(e)
 
     def create(self, validated_data: dict):
+        """Creates message with its files if passed"""
+
         try:
             files = self.initial_data.getlist("files", [])
         except Exception as e:
@@ -195,10 +227,12 @@ class MessageMixin(DynamicFieldsMixin, metaclass=S.SerializerMetaclass):
         return msg
 
     def validate_files(self, files: list):
+        """Validates files using file serializer"""
         ser_cls = self.get_file_serializer()
         serializer = ser_cls(data=[{"file": file} for file in files], many=True)
         serializer.is_valid(raise_exception=True)
         return serializer.validated_data, ser_cls.Meta.model
 
     def get_file_serializer(self):
+        """Hook to return file serializer"""
         return

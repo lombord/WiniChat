@@ -7,7 +7,10 @@ from . import settings
 urlpatterns = [
     path('admin/', admin.site.urls),
     # path("__debug__/", include("debug_toolbar.urls")),
+    
+    # api related routes
     path('api/', include('base_app.api.urls')),
+    # rest-framework auth routes
     path('api-auth/', include('rest_framework.urls')),
 ]
 

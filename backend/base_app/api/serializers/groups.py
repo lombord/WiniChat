@@ -1,3 +1,6 @@
+"""Group chat serializers"""
+
+
 from django.db import transaction
 
 from rest_framework import serializers as S, exceptions as EX
@@ -25,12 +28,18 @@ from .mixins import (
 
 
 class GFileSerializer(FileMixin, S.ModelSerializer):
+    """
+    Serializer for files of group messages
+    """
 
     class Meta(FileMixin.Meta):
         model = GroupMessageFile
 
 
 class GMessageSerializer(MessageMixin, ModelSerializerMixin, S.ModelSerializer):
+    """
+    Group messages serializer
+    """
 
     pass_instance = True
     url = AbsoluteURLField(read_only=True)
@@ -45,6 +54,10 @@ class GMessageSerializer(MessageMixin, ModelSerializerMixin, S.ModelSerializer):
 
 
 class RoleSerializer(DynamicFieldsMixin, ModelSerializerMixin, S.ModelSerializer):
+    """
+    Group Roles main serializer
+    """
+
     pass_instance = True
 
     url = AbsoluteURLField()
@@ -56,6 +69,10 @@ class RoleSerializer(DynamicFieldsMixin, ModelSerializerMixin, S.ModelSerializer
 
 
 class PublicGroupSerializer(GroupMixin, S.ModelSerializer):
+    """
+    Public groups serializer for preview
+    """
+
     url = AbsoluteURLField(url_name="public-group-detail")
 
     class Meta:
@@ -78,6 +95,9 @@ class PublicGroupSerializer(GroupMixin, S.ModelSerializer):
 
 
 class GroupSerializer(ChatMixin, GroupMixin, ModelSerializerMixin, S.ModelSerializer):
+    """
+    Main group serializer for creating, reading and updating.
+    """
 
     class Meta(ChatMixin.Meta):
         model = Group
@@ -99,6 +119,10 @@ class GroupSerializer(ChatMixin, GroupMixin, ModelSerializerMixin, S.ModelSerial
         return group.latest[0]
 
     def validate_photo(self, val):
+        """
+        Cleans old photo before  if it exists
+        """
+
         if self.instance:
             clean_old_photo(self.instance.photo)
         return val
@@ -114,6 +138,10 @@ class GroupSerializer(ChatMixin, GroupMixin, ModelSerializerMixin, S.ModelSerial
 
 
 class MemberSerializer(ReprSerializerMixin, ModelSerializerMixin, S.ModelSerializer):
+    """
+    Main group member serializer for creating, reading and updating.
+    """
+
     url = AbsoluteURLField()
     last_activity = S.SerializerMethodField()
 
@@ -147,12 +175,17 @@ class MemberSerializer(ReprSerializerMixin, ModelSerializerMixin, S.ModelSeriali
         }
 
     def update(self, instance, validated_data):
+        # prevent overwriting user, and group of a member
         validated_data.pop("user", None)
         validated_data.pop("group", None)
         return super().update(instance, validated_data)
 
 
 class GroupBanSerializer(ReprSerializerMixin, ModelSerializerMixin, S.ModelSerializer):
+    """
+    Main group ban serializer
+    """
+
     url = AbsoluteURLField()
 
     class Meta:
@@ -174,6 +207,7 @@ class GroupBanSerializer(ReprSerializerMixin, ModelSerializerMixin, S.ModelSeria
         }
 
     def update(self, instance, validated_data):
+        # prevent overwriting user, group nad banned_by of a ban instance
         validated_data.pop("user", None)
         validated_data.pop("group", None)
         validated_data.pop("banned_by", None)

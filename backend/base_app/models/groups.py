@@ -1,10 +1,10 @@
-# built in libraries
+"""Group related modules"""
+
 import os
 from uuid import uuid4
 from itertools import chain
 
 
-# django libraries
 from django.db import models
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
@@ -16,17 +16,22 @@ from django.dispatch import receiver
 from django.core.validators import MaxValueValidator, MinLengthValidator
 
 
-# custom modules
 from .abstract import MessageBase, MessageFileBase
 from .utils import MessageFilePath, FILE_VALIDATOR, delete_file, delete_old_file
 
 
+# Unique identifier name regex pattern
 UNIQUE_NAME_RE = r"^[_a-z][_a-z0-9]{2,50}$"
 
 
 class GroupQuerySet(models.QuerySet):
+    """Group queryset"""
 
     def search_groups(self, query: str, user):
+        """
+        Searches public groups by query for a user 
+        excluding banned groups of the user
+        """
         exp = Q(public=False) | Q(pk__any=user.all_groups.values("pk").order_by())
         qs = self.exclude(exp)
         if query:
@@ -43,12 +48,14 @@ class GroupQuerySet(models.QuerySet):
         return qs
 
     def prefetch_latest(self):
+        """Prefetches latest message for groups"""
         qs = GroupMessage.objects.annotate_owner_name().order_by("-created")
         return self.prefetch_related(
             Prefetch("messages", queryset=qs, to_attr="latest")
         )
 
     def annotate_count(self):
+        """Annotates members and online people count for groups"""
         return self.annotate(
             members_count=Count("members"),
             online_count=Count("people", filter=Q(people__status__gt=0)),
@@ -56,26 +63,32 @@ class GroupQuerySet(models.QuerySet):
 
 
 class GroupManager(models.Manager):
+    """Group manager"""
 
     def get_queryset(self) -> GroupQuerySet:
         return GroupQuerySet(self.model, using=self._db)
 
     def search_groups(self, query: str, user):
+        """Searches public groups"""
         return self.get_queryset().annotate_count().search_groups(query, user)
 
     def common_fetch(self):
+        """Common fetch for groups"""
         return self.get_queryset().annotate_count().prefetch_latest()
 
 
 def group_photo_path(group: "Group", fname: str):
+    """Generate group photo path based on group id"""
     ext = os.path.splitext(fname)[-1]
     name = uuid4().hex
     return f"groups/{group.pk}/{name}{ext}"
 
 
 class Group(models.Model):
+    """Group Chat model"""
 
     name = models.CharField(_("group name"), max_length=50)
+    # group public unique identifier
     unique_name = models.CharField(
         _("unique name"),
         max_length=100,
@@ -121,12 +134,14 @@ class Group(models.Model):
 
     class Meta:
         constraints = [
+            # Group identifier name must be unique
             models.UniqueConstraint(
                 Lower("unique_name"),
                 condition=Q(public=True),
                 name="unique_group_name",
                 violation_error_message=_("Public group name should be unique."),
             ),
+            # Public groups must have valid unique identifier
             models.CheckConstraint(
                 check=Q(public=False) | Q(unique_name__iregex=UNIQUE_NAME_RE),
                 name="check_valid_public_name",
@@ -134,10 +149,14 @@ class Group(models.Model):
             ),
         ]
         indexes = [
+            # Indexing group name to speed up lookups by group name
             models.Index(Lower("name"), name="group_name_idx"),
+            # Indexing group created date to speed up group ordering
             models.Index(F("created").desc(), name="group_created_idx"),
+            # Indexing group public flag to speed up public groups searching
             models.Index(F("public").desc(), name="group_public_idx"),
         ]
+        # ordering groups by created date by default
         ordering = ("-created",)
 
     @property
@@ -146,33 +165,41 @@ class Group(models.Model):
 
     @cached_property
     def default_role(self):
+        """Default group role"""
         return self.roles.get(is_default=True)
 
     @property
     def banned_ids(self):
+        """Banned people ids list"""
         return self.banned_people.values_list("id", flat=True)
 
     @property
     def allowed_members(self) -> models.QuerySet:
+        """Allowed members queryset"""
         return self.members.exclude(user_id__in=self.banned_ids)
 
     @property
     def all_people(self):
+        """Group all members and banned users queryset"""
         return (self.people.all() | self.banned_people.all()).distinct().order_by()
 
     @property
     def allowed_people(self):
+        """Allowed people queryset"""
         return self.people.exclude(pk__in=self.banned_ids)
 
     @property
     def online_people(self):
+        """Allowed online people queryset"""
         return self.allowed_people.filter(status__gt=0)
 
     @property
     def online_ids(self):
+        """Allowed online people ids"""
         return self.online_people.values_list("pk", flat=True)
 
     def search_member(self, query: str):
+        """Search group members"""
         return (
             self.allowed_members.filter(
                 Q(user__username__icontains=query)
@@ -189,36 +216,45 @@ class Group(models.Model):
         )
 
     def setup_group(self):
+        """Group initializer called after group created"""
         owner_role = GroupRole.create_owner_role(self, self.owner)
         GroupMember.objects.create(group=self, user=self.owner, role=owner_role)
         GroupRole.create_default_role(self, self.owner)
 
     # Group permission related methods
     def is_banned(self, user_id) -> bool:
+        """Check whether given user id is banned"""
         try:
             return self.banned_ids.filter(id=user_id).exists()
         except Exception:
             return False
 
     def has_member(self, user_id):
+        """Check if user is a member"""
         return self.members.filter(user_id=user_id).order_by().exists()
 
     def can_send(self, user_id) -> bool:
+        """Check if user can send messages in this group"""
         return self.has_perm(user_id, "send_msg")
 
     def can_delete(self, user_id) -> bool:
+        """Check if user can delete messages in this group"""
         return self.has_perm(user_id, "delete_msg")
 
     def can_kick(self, user1, user2) -> bool:
+        """Check if user can kick people in this group"""
         return self.has_perm_over(user1, user2, "kick_user")
 
     def can_join(self, user_id):
+        """Check if user can join this group"""
         return not self.banned_people.filter(id=user_id).exists()
 
     def can_join_public(self, user_id):
+        """Check if user can join if group is public"""
         return self.public and self.can_join(user_id)
 
     def can_add(self, user1, user2) -> bool:
+        """Check if user1 can add user2 to this group"""
         try:
             role = self.get_user_role(
                 user1.pk,
@@ -233,9 +269,11 @@ class Group(models.Model):
             return False
 
     def can_ban(self, user1, user2) -> bool:
+        """Check if user1 can ban user2 from this group"""
         return self.has_perm_over(user1, user2, "ban_user")
 
     def can_unban(self, user, banned_by) -> bool:
+        """Check if user can unban over banned_by"""
         try:
             roles = self.get_user_roles(
                 user,
@@ -252,18 +290,23 @@ class Group(models.Model):
             return False
 
     def can_edit(self, user_id) -> bool:
+        """Check if user can edit group info"""
         return self.has_perm(user_id, "edit_group")
 
     def can_manage_role(self, user_id) -> bool:
+        """Check if user can manage roles in this group"""
         return self.has_perm(user_id, "manage_role")
 
     def manage_role_over(self, user1, user2) -> bool:
+        """Check if user1 can manage user2's role"""
         return self.has_perm_over(user1, user2, "manage_role")
 
     def is_admin(self, user_id) -> bool:
+        """Check if user is admin"""
         return self.has_perm(user_id, "super_admin")
 
     def is_owner(self, user_id) -> bool:
+        """Check if user is group owner"""
         try:
             role = self.get_user_role(user_id, 0)
             return role.is_owner
@@ -271,6 +314,7 @@ class Group(models.Model):
             return False
 
     def defer_member_qs(self, perms=None) -> models.QuerySet:
+        """Retrieve only given and specific role permissions"""
         qs = self.members.select_related("role")
         if perms is None:
             qs = qs.defer("joint", "added_by")
@@ -280,13 +324,16 @@ class Group(models.Model):
         return qs
 
     def get_user_role(self, user_id, perms=None) -> "GroupRole":
+        """Get user role with given permissions"""
         return self.defer_member_qs(perms).get(user_id=user_id).role
 
     def get_user_roles(self, user1, user2, perms=None):
+        """Get users roles with given permissions"""
         qs = self.defer_member_qs(perms).filter(user_id__in=[user1, user2])
         return {member.user_id: member.role for member in qs}
 
     def has_perm_over(self, user1, user2, perm: str) -> bool:
+        """Check whether user1 has permission and priority over user2"""
         if not user2:
             return self.has_perm(user1, perm)
         if isinstance(user2, GroupRole):
@@ -305,6 +352,7 @@ class Group(models.Model):
             return False
 
     def has_perm_over_role(self, user_id, role, perm: str) -> bool:
+        """Check if user has permission and priority over role"""
         try:
             user_role = self.get_user_role(
                 user_id,
@@ -318,6 +366,7 @@ class Group(models.Model):
             return False
 
     def has_perm(self, user_id, perm: str) -> bool:
+        """Check if user has permission given permission"""
         try:
             assert user_id
             role = self.get_user_role(
@@ -330,10 +379,8 @@ class Group(models.Model):
         except Exception:
             return False
 
-    def is_owner(self, user_id) -> bool:
-        return self.owner_id == user_id
-
     def get_absolute_url(self, name="group-detail"):
+        """Get group absolute url based on given url name"""
         return reverse(name, kwargs={"group_pk": self.pk})
 
     def __str__(self) -> str:
@@ -341,11 +388,15 @@ class Group(models.Model):
 
 
 @receiver(models.signals.post_delete, sender=Group)
-def delete_group_files(sender, instance, **kwargs):
+def delete_group_photo(sender, instance, **kwargs):
+    """Delete group photo when group is deleted"""
     delete_file(instance.photo)
 
 
 class GroupRole(models.Model):
+    """Group Role model"""
+
+    # special role properties list
     SPECIAL_PROPS = ("is_default", "is_owner", "priority", "super_admin")
 
     name = models.CharField(_("group role"), max_length=50)
@@ -378,6 +429,7 @@ class GroupRole(models.Model):
 
     class Meta:
         constraints = [
+            # Role names must be unique for group
             models.UniqueConstraint(
                 fields=["group", "name"],
                 name="unique_group_role",
@@ -385,6 +437,7 @@ class GroupRole(models.Model):
                     "This group already has a role with this name!"
                 ),
             ),
+            # Groups must have only one default role
             models.UniqueConstraint(
                 F("group"),
                 F("is_default").desc(),
@@ -392,6 +445,7 @@ class GroupRole(models.Model):
                 condition=Q(is_default=True),
                 violation_error_message=_("Group can have only one default role"),
             ),
+            # Groups must have only one owner role
             models.UniqueConstraint(
                 F("group"),
                 F("is_owner").desc(),
@@ -399,6 +453,7 @@ class GroupRole(models.Model):
                 condition=Q(is_owner=True),
                 violation_error_message=_("Group can have only one owner role"),
             ),
+            # Role priorities must be in range [0, 100]
             models.CheckConstraint(
                 check=Q(priority__gte=0) & Q(priority__lte=100),
                 name="check_priority_range",
@@ -406,16 +461,20 @@ class GroupRole(models.Model):
             ),
         ]
         indexes = [
+            # Indexing role names to speed up lookup by role name
             models.Index(F("name"), name="group_role_idx"),
+            # Indexing role priority to speed up ordering by role priority
             models.Index(F("priority").asc(), name="role_priority_idx"),
         ]
         ordering = ("-id",)
 
     @property
     def is_special(self):
+        """Indicates whether role is special"""
         return self.is_default or self.is_owner
 
     def clean(self):
+        """Validates role before creating"""
         if self.pk:
             return
         try:
@@ -436,6 +495,7 @@ class GroupRole(models.Model):
 
     @classmethod
     def create_owner_role(cls, group, user) -> "GroupRole":
+        """Class method to create owner role"""
         return cls.objects.create(
             name="owner",
             group=group,
@@ -447,14 +507,17 @@ class GroupRole(models.Model):
 
     @classmethod
     def create_default_role(cls, group, user) -> "GroupRole":
+        """Class method to create default member role"""
         return cls.objects.create(
             name="member", group=group, is_default=True, priority=100, created_by=user
         )
 
     def has_perm(self, perm: str) -> bool:
+        """Check whether role has given permission"""
         return getattr(self, perm, False) or self.super_admin or self.is_owner
 
     def has_priority_over(self, role: "GroupRole") -> bool:
+        """Check whether role has priority over given role"""
         try:
             return not role.is_owner and (
                 self.is_owner or self.priority < role.priority
@@ -463,9 +526,11 @@ class GroupRole(models.Model):
             return False
 
     def has_perm_over(self, role: "GroupRole", perm: str) -> bool:
+        """Check whether role has permission and priority over given role"""
         return self.has_perm(perm) and self.has_priority_over(role)
 
     def manage_role_over(self, role):
+        """Check whether role can manage over given role"""
         return self.has_perm_over(role, "manage_role")
 
     def __str__(self) -> str:
@@ -477,6 +542,11 @@ class GroupRole(models.Model):
 
 @receiver(models.signals.pre_delete, sender=GroupRole)
 def on_role_delete(sender, instance: GroupRole, origin, **kwargs):
+    """
+    Called when role before role deleted.
+    Updates members role of deleting role to default role and
+    prevents deleting special roles if delete origin is not from group
+    """
     if isinstance(origin, Group):
         return
     if instance.is_special:
@@ -485,6 +555,8 @@ def on_role_delete(sender, instance: GroupRole, origin, **kwargs):
 
 
 class GroupMember(models.Model):
+    """Group members model"""
+
     group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name="members")
     user = models.ForeignKey("User", on_delete=models.CASCADE, related_name="+")
     role = models.ForeignKey(
@@ -504,34 +576,46 @@ class GroupMember(models.Model):
 
     class Meta:
         constraints = [
+            # User can join once
             models.UniqueConstraint(
                 fields=["user", "group"],
                 name="join_group_once",
                 violation_error_message=_("You're already in the group."),
             ),
+            # User can't add themselves
             models.CheckConstraint(
                 check=~Q(user=F("added_by")),
                 name="check_added_by",
                 violation_error_message=_("Can't add yourself to the group."),
             ),
         ]
-        indexes = [models.Index(F("joint").desc(), name="group_joint_date_idx")]
+        indexes = [
+            # Indexing user joint date to speed up ordering by joint date
+            models.Index(F("joint").desc(), name="group_joint_date_idx"),
+        ]
         ordering = ("-joint",)
 
     def save(self, *args, **kwargs):
+        # set default role if role is not specified
         if not self.role:
             self.role = self.group.default_role
         super().save(*args, **kwargs)
 
     def clean(self):
+        """Validates member before creating"""
+
+        # ensure added_by is not same as user
         if self.added_by == self.user:
             self.added_by = None
         try:
+            # ensure group is public or added_by has a permission to
+            # add people and user is not banned
             assert (
                 not self.added_by and self.group.can_join_public(self.user_id)
             ) or self.group.can_add(
                 self.added_by, self.user
             ), "This operation cannot be done."
+            # ensure member role belongs to joining group
             assert (
                 self.group_id == self.role.group_id
             ), "User role must belong to the joining group."
@@ -548,6 +632,8 @@ class GroupMember(models.Model):
 
 
 class GroupBan(models.Model):
+    """Group ban model"""
+
     group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name="bans")
     user = models.ForeignKey(
         "User", on_delete=models.CASCADE, related_name="group_bans"
@@ -564,11 +650,13 @@ class GroupBan(models.Model):
 
     class Meta:
         constraints = [
+            # User can be banned only once
             models.UniqueConstraint(
                 fields=["user", "group"],
                 name="ban_user_once",
                 violation_error_message=_("This user has already been banned"),
             ),
+            # User can't ban themselves
             models.CheckConstraint(
                 check=~Q(user=F("banned_by")),
                 name="check_banned_by",
@@ -576,11 +664,13 @@ class GroupBan(models.Model):
             ),
         ]
         indexes = [
+            # Indexing created date to speed up ordering
             models.Index(F("created").desc(), name="ban_created_idx"),
         ]
         ordering = ("-created",)
 
     def clean(self):
+        """Validates ban before creating"""
         if not self.group.can_ban(self.banned_by_id, self.user_id):
             raise ValidationError(_("You can't ban this person."))
 
@@ -589,15 +679,21 @@ class GroupBan(models.Model):
 
 
 class GroupMessage(MessageBase):
+    """Group message model"""
+
     group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name="messages")
 
     class Meta(MessageBase.Meta):
-        indexes = [models.Index(F("created").desc(), name="group_msg_created_idx")]
+        indexes = [
+            # Indexing message created date to speed up ordering
+            models.Index(F("created").desc(), name="group_msg_created_idx"),
+        ]
 
     def __str__(self) -> str:
         return f"{self.group_id}:{super().__str__()}"
 
     def clean(self):
+        """Validates message and owner before creating"""
         if not self.group.can_send(self.owner_id):
             raise ValidationError(_("You are not allowed to send messages."))
 
@@ -605,10 +701,13 @@ class GroupMessage(MessageBase):
         return reverse(name, kwargs={"group_pk": self.group_id, "pk": self.pk})
 
 
+# Path to store group message files
 message_file_path = MessageFilePath("group_media", "message.group_id")
 
 
 class GroupMessageFile(MessageFileBase):
+    """Group message file model"""
+
     file = models.FileField(
         upload_to=message_file_path,
         validators=[
@@ -621,15 +720,18 @@ class GroupMessageFile(MessageFileBase):
 
     class Meta(MessageFileBase.Meta):
         indexes = [
+            # Indexing file type to speed up sorting
             models.Index(Lower("file_type"), name="group_file_type_idx"),
         ]
 
 
 @receiver(models.signals.post_delete, sender=GroupMessageFile)
 def clean_message_files(sender, instance, **kwargs):
+    """Deletes message file before deleting instance"""
     delete_file(instance.file)
 
 
 @receiver(models.signals.pre_save, sender=GroupMessageFile)
 def message_file_change(sender, instance, **kwargs):
+    """Deletes old file before replacing it with new one"""
     delete_old_file(sender, instance)

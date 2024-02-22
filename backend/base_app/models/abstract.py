@@ -1,3 +1,5 @@
+"""Common abstract models"""
+
 import os
 from mutagen import File
 
@@ -11,17 +13,21 @@ from .utils import get_file_type, AUDIO_EXTS
 
 
 class MessageQuerySet(models.QuerySet):
+    """Abstract class for message querysets"""
 
     def annotate_owner_name(self):
+        """Annotates message owners full name"""
         return self.annotate(
             owner_name=Concat("owner__first_name", Value(" "), "owner__last_name")
         )
 
     def prefetch_files(self):
+        """Prefetches message files"""
         return self.prefetch_related(Prefetch("files", to_attr="_cached_files"))
 
 
 class MessageManager(models.Manager):
+    """Abstract class for message model manager"""
 
     def get_queryset(self) -> MessageQuerySet:
         return MessageQuerySet(self.model, using=self._db)
@@ -30,12 +36,13 @@ class MessageManager(models.Manager):
         return self.get_queryset().annotate_owner_name()
 
     def common_fetch(self):
+        """Base common fetch method for messages"""
         return self.get_queryset().prefetch_files().annotate_owner_name()
 
 
 class MessageBase(models.Model):
     """
-    Message model for private chats
+    Abstract model class for messages
     """
 
     owner = models.ForeignKey(
@@ -72,6 +79,10 @@ class MessageBase(models.Model):
 
 
 class MessageFileBase(models.Model):
+    """
+    Abstract model class for message files
+    """
+
     file_type = models.CharField(_("File type"), max_length=50)
     metadata = models.JSONField()
 

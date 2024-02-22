@@ -1,3 +1,5 @@
+"""API pagination classes"""
+
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.utils.urls import replace_query_param
 

@@ -1,3 +1,5 @@
+"""API permission classes"""
+
 from django.http import HttpRequest
 from rest_framework import permissions
 

@@ -1,3 +1,5 @@
+"""Group Viewsets"""
+
 import re
 
 from django.db.models import Q, Subquery, OuterRef, F
@@ -28,6 +30,7 @@ from .mixins import NestedViewSetMixin
 
 
 class MessageMixin:
+    """Mixin to handle group message requests"""
 
     def messages_queryset(self):
         if self.request.method == "DELETE":
@@ -85,6 +88,7 @@ class MessageMixin:
 
 
 class RoleMixin:
+    """Mixin to handle group role requests"""
 
     def roles_queryset(self):
         qs = self.group.roles.all()
@@ -164,6 +168,8 @@ class RoleMixin:
 
 
 class RoleOptionsMixin:
+    """Mixin to handle group role option requests"""
+
     def role_opts_queryset(self):
         lookup = Q(priority__gt=self.user_role.priority)
         query = self.request.GET.get("q")
@@ -197,6 +203,7 @@ class RoleOptionsMixin:
 
 
 class MemberMixin:
+    """Mixin to handle group member requests"""
 
     def members_queryset(self):
         if self.nested_detail:
@@ -344,6 +351,7 @@ class MemberMixin:
 
 
 class MemberBanMixin:
+    """Mixin to handle group ban requests"""
 
     def bans_queryset(self):
         query = self.request.GET.get("q")
@@ -400,6 +408,7 @@ class MemberBanMixin:
 
 
 class GroupInviteMixin:
+    """Mixin to handle group invitation requests"""
 
     def invites_queryset(self):
         query = self.request.GET.get("q", "")
@@ -419,6 +428,8 @@ class GroupInviteMixin:
 
 
 class GroupFilesMixin:
+    """Mixin to handle group file requests"""
+
     def files_queryset(self):
         type_ = self.request.GET.get("type", "")
         expr = Q(message__group_id=self.group.pk)
@@ -446,6 +457,8 @@ class GroupViewSet(
     GroupInviteMixin,
     ModelViewSet,
 ):
+    """ViewSet to handle group requests including nested actions"""
+
     serializer_class = GroupSerializer
     lookup_field = "pk"
     lookup_url_kwarg = "group_pk"
@@ -495,6 +508,7 @@ class GroupViewSet(
     @action(detail=True, methods=["get"], url_path=r"my-role", url_name="my-role")
     @nested_action
     def my_role(self, request, *args, **kwargs):
+        """Action method to get request user's role in this group"""
         role = get_object_or_404(
             self.group.members.select_related("role"), user=request.user
         ).role
@@ -510,6 +524,7 @@ class GroupViewSet(
         url_name="check-group-name",
     )
     def check_group_name(self, request, *args, **kwargs):
+        """Action method to validate group unique name"""
         name = request.GET.get("q")
         is_valid = False
         if name and re.match(UNIQUE_NAME_RE, name, flags=re.IGNORECASE):

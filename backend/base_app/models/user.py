@@ -1,3 +1,5 @@
+"""User models"""
+
 import os
 from uuid import uuid4
 
@@ -25,8 +27,8 @@ class UserQuerySet(models.QuerySet):
 
     def filter_people(self, user):
         """
-        Returns queryset of active people excluding
-        admins
+        Returns queryset of active people excluding admins,
+        inactive people and user himself
         """
         exp = (
             Q(is_superuser=True) | Q(is_staff=True) | Q(is_active=False) | Q(pk=user.pk)
@@ -34,6 +36,10 @@ class UserQuerySet(models.QuerySet):
         return self.exclude(exp)
 
     def get_chats(self, user):
+        """
+        Returns queryset of user chats
+        """
+
         from .pchats import PChat
 
         exp = (Q(from_user=user) & Q(to_user=OuterRef("pk"))) | (
@@ -42,6 +48,7 @@ class UserQuerySet(models.QuerySet):
         return PChat.objects.filter(exp).values("pk").order_by()
 
     def search_query(self, query):
+
         exp = (
             Q(username__icontains=query)
             | Q(first_name__icontains=query)
@@ -59,7 +66,7 @@ class UserQuerySet(models.QuerySet):
 
     def search_people(self, query: str, user: "User"):
         """
-        Simple people search by given query
+        Simple people searching by given query and user
         """
         qs = self.filter_people(user).alias_chat(user)
         if query:
@@ -67,6 +74,8 @@ class UserQuerySet(models.QuerySet):
         return qs.filter(chat_id__isnull=True)
 
     def search_friends(self, query: str, user):
+        """Search people that user has common chat with"""
+
         qs = self.exclude(pk=user.pk).annotate_chat(user)
         if query:
             qs = qs.search_query(query)
@@ -96,7 +105,7 @@ class MyUserManager(UserManager):
 
 def user_photo_path(user: "User", fname: str):
     """
-    Generates a path to a photo based on the user
+    Generates a path to a photo based on user
     Args:
         user (User): instance of User model
         fname (str): The filename that was originally given to the file
@@ -110,7 +119,7 @@ def user_photo_path(user: "User", fname: str):
 
 class User(AbstractUser):
     """
-    Main User model
+    App User model
     """
 
     email = models.EmailField(_("email address"), blank=False, null=False)
@@ -121,11 +130,14 @@ class User(AbstractUser):
         upload_to=user_photo_path, max_length=255, default="defaults/user/default.png"
     )
 
+    # user sessions number
     status = models.PositiveSmallIntegerField(_("user status"), default=0)
 
+    # people whom user started chat with
     chat_to = models.ManyToManyField(
         "self",
         through_fields=("from_user", "to_user"),
+        # people who user got chat from
         related_name="chat_from",
         symmetrical=False,
         through="PChat",
@@ -142,6 +154,7 @@ class User(AbstractUser):
         verbose_name = _("user")
         verbose_name_plural = _("users")
         constraints = [
+            # User email must be unique
             models.UniqueConstraint(
                 fields=[
                     "email",
@@ -151,17 +164,21 @@ class User(AbstractUser):
             ),
         ]
         indexes = [
+            # Indexing user first and last name to speed up ordering
             models.Index(fields=["first_name", "last_name"], name="user_fullname_idx"),
+            # Indexing user status to speed up sorting
             models.Index(F("status").desc(), name="user_status_idx"),
         ]
         ordering = ("first_name", "last_name")
 
     @property
     def allowed_groups(self):
+        """Returns valid user groups"""
         return self.user_groups.exclude(banned_people=self)
 
     @property
     def all_groups(self):
+        """Returns all user groups including banned ones"""
         return (self.user_groups.all() | self.banned_groups.all()).distinct().order_by()
 
     @property
@@ -172,12 +189,14 @@ class User(AbstractUser):
         return (self.chat_to.all() | self.chat_from.all()).distinct()
 
     def has_chat(self, user):
+        """Checks if user has a chat with this user"""
         return self.chatted_people.contains(user)
 
     def get_absolute_url(self):
         return reverse("user", kwargs={"pk": self.pk})
 
     def save(self, *args, **kwargs):
+        # set first name same as username if not specified
         if not self.first_name:
             self.first_name = self.username
         super().save(*args, **kwargs)
@@ -189,6 +208,8 @@ class User(AbstractUser):
         return self.from_me.all() | self.to_me.all()
 
     def get_generic_chats(self):
+        """Get queryset of all types of available user chats"""
+
         created = Max("messages__created", default=F("created"))
         sub_q = (
             GroupMessage.objects.filter(group=OuterRef("pk"))
@@ -222,6 +243,6 @@ class User(AbstractUser):
     @property
     def is_online(self):
         """
-        Defines if user is online
+        Indicates whether user is online
         """
         return self.status > 0

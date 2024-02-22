@@ -11,6 +11,8 @@ from ..serializers import MessageSerializer
 class MessageViewSet(
     MX.RetrieveModelMixin, MX.UpdateModelMixin, MX.DestroyModelMixin, GenericViewSet
 ):
+    """Private chat message ViewSet"""
+    
     serializer_class = MessageSerializer
 
     def get_queryset(self):

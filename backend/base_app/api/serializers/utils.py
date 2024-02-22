@@ -1,3 +1,5 @@
+"""Utility classes and function for serializers"""
+
 import os
 
 from django.http import HttpRequest
@@ -6,6 +8,7 @@ from rest_framework import serializers as S
 
 
 class AbsoluteURLField(S.Field):
+    """Absolute url field for model instances"""
 
     def __init__(self, *, url_name=None, **kwargs):
         self.url_name = url_name
@@ -25,7 +28,7 @@ class AbsoluteURLField(S.Field):
 
 
 def clean_old_photo(file):
-
+    """Cleans old file if it exists and is not default"""
     name = os.path.basename(file.name)
     if not name.startswith("default"):
         os.remove(file.path)

@@ -9,14 +9,14 @@ from base_app.api.routing import websocket_urlpatterns
 # is populated before importing code that may import ORM models.
 django_asgi_app = get_asgi_application()
 
-routes = URLRouter([
-    path('ws/', URLRouter(websocket_urlpatterns))
-])
+routes = URLRouter([path("ws/", URLRouter(websocket_urlpatterns))])
 
 
-application = ProtocolTypeRouter({
-    "http": django_asgi_app,
-    "websocket": AllowedHostsOriginValidator(
-        JWTAuthMiddlewareStack(routes)
-    ),
-})
+application = ProtocolTypeRouter(
+    {
+        # http requests handler
+        "http": django_asgi_app,
+        # ws requests handler
+        "websocket": AllowedHostsOriginValidator(JWTAuthMiddlewareStack(routes)),
+    }
+)

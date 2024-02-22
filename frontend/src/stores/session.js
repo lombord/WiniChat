@@ -1,16 +1,25 @@
 // Store that controls communication with server
 // using `http(s)` and `ws` protocols
 
+
+
 import { ref, reactive, markRaw, shallowReadonly } from "vue";
 import { defineStore } from "pinia";
 import axios from "axios";
 import { request } from "@/plugins/request.js";
 
 const GroupWSMixin = (Cls = Object) =>
+  /**
+   * Mixin to handle Group WS Events
+   */
+
   class extends Cls {
     constructor() {
       super();
+
+      // map of group websocket objects
       this.groupWS = new Map();
+      // map of general group websocket event handlers
       this.grpGenEvents = new Map();
       this.onGroupGen("role_updated", ({ group_id, role_id, data }) =>
         this.refreshRole(group_id, role_id, data)
@@ -20,18 +29,34 @@ const GroupWSMixin = (Cls = Object) =>
       this.onGroupGen("change_role", this.changeMemberRole.bind(this));
     }
 
+    /**
+     * SetsUp group ws object for given group id
+     * @param {Number} id - Group id
+     * @return {Object} Returns GroupWS object.
+     */
     setUpGroupWS(id) {
       const wsObj = { events: new Map(), roles: new Map(), members: new Map() };
       this.groupWS.set(id, wsObj);
       return wsObj;
     }
 
+    /**
+     * Returns GroupWS object prop of given group.
+     * @param {Number} id - Group id
+     * @param {String} prop - Property name
+     */
     getGroupWS(id, prop) {
       try {
         return this.groupWS.get(id)[prop];
       } catch (error) {}
     }
 
+    /**
+     * Tries to get GroupWS object if it exists,
+     * otherwise creates it based on id and returns prop
+     * @param {Number} id - Group id
+     * @param {String} prop - Property name
+     */
     acquireGroupWS(id, prop) {
       let result = this.getGroupWS(id, prop);
       if (!result) {
@@ -48,12 +73,24 @@ const GroupWSMixin = (Cls = Object) =>
       this.grpGenHandler(event, data);
     }
 
+    /**
+     * Returns Set of group listeners for given event
+     * @param {Number} id - Group id
+     * @param {String} event - Event name
+     * @return {Set} Brief description of the returning value here.
+     */
     getEventListeners(id, event) {
       try {
         return this.groupWS.get(id).events.get(event);
       } catch (error) {}
     }
 
+    /**
+     * Group event handler for GroupWS objects.
+     * Calls event listeners of an event with received data
+     * @param {String} event - Event name
+     * @param {Object} data - WS data
+     */
     groupEventHandler(event, { group_id, data, ...rest }) {
       const listeners = this.getEventListeners(group_id, event);
       if (!listeners) return;
@@ -62,6 +99,11 @@ const GroupWSMixin = (Cls = Object) =>
       }
     }
 
+    /**
+     * General group events handler
+     * @param {String} event - Event name
+     * @param {Object} data - ws data
+     */
     grpGenHandler(event, data) {
       let callback = this.grpGenEvents.get(event);
       if (callback) {
@@ -69,10 +111,21 @@ const GroupWSMixin = (Cls = Object) =>
       }
     }
 
+    /**
+     * Sets general group listener for given event
+     * @param {String} event - Event name
+     * @param {Function} callback - Callback function
+     */
     onGroupGen(event, callback) {
       this.grpGenEvents.set(event, callback);
     }
 
+    /**
+     * Sets event listener for given event
+     * @param {Number} id - Group id
+     * @param {String} event - Event name
+     * @param {Function} callback - Callback function
+     */
     onGroup(id, event, callback) {
       const events = this.acquireGroupWS(id, "events");
       let listeners = events.get(event);
@@ -83,26 +136,60 @@ const GroupWSMixin = (Cls = Object) =>
       listeners.add(callback);
     }
 
+    /**
+     * Returns events map for given group
+     * @param {Number} id - Group id
+     * @return {Map} Map of event-listeners
+     */
     getGroupEvents(id) {
       return this.getGroupWS(id, "events");
     }
 
+    /**
+     * Returns Map of Reactive trackable roles of a group
+     * @param {Number} id - Group id
+     * @return {Map} Map of reactive role objects
+     */
     getRoles(id) {
       return this.getGroupWS(id, "roles");
     }
 
+    /**
+     * Returns Map of Reactive trackable members of a group
+     * @param {Number} id - Group id
+     * @return {Map} Map of reactive member objects
+     */
     getMembers(id) {
       return this.getGroupWS(id, "members");
     }
 
+    /**
+     * Returns reactive role of a group
+     * @param {Number} groupId - Group id
+     * @param {Number} roleId - Role id
+     * @return {Proxy} reactive role object
+     */
     getRole(groupId, roleId) {
       return this.getRoles(groupId)?.get(roleId);
     }
 
+    /**
+     * Returns reactive member of a group
+     * @param {Number} groupId - Group id
+     * @param {Number} userId - User id
+     * @return {Proxy} reactive member object
+     */
     getMember(groupId, userId) {
       return this.getMembers(groupId)?.get(userId);
     }
 
+    /**
+     * Creates reactive role object for a group if it doesn't exist
+     * otherwise returns the existing one
+     * @param {Number} groupId - Group id
+     * @param {Number} roleId - Role id
+     * @return {Proxy} reactive role object
+     */
     watchRole(groupId, roleId) {
       const roles = this.acquireGroupWS(groupId, "roles");
       let role = roles.get(roleId);
@@ -113,6 +200,14 @@ const GroupWSMixin = (Cls = Object) =>
       return shallowReadonly(role);
     }
 
+    /**
+     * Creates reactive member object for a group if it doesn't exist
+     * otherwise returns the existing one
+     * @param {Number} groupId - Group id
+     * @param {Number} userId - User id
+     * @param {Number} roleId - Member role id
+     * @return {Proxy} reactive member object
+     */
     watchMember(groupId, userId, roleId) {
       const members = this.acquireGroupWS(groupId, "members");
       let member = members.get(userId);
@@ -124,6 +219,12 @@ const GroupWSMixin = (Cls = Object) =>
       return member;
     }
 
+    /**
+     * Refreshes role of a group with the given data
+     * @param {Number} groupId - Group id
+     * @param {Number} roleId - Member role id
+     * @param {Object} data - Refresh data
+     */
     refreshRole(groupId, roleId, data) {
       let role = this.getRole(groupId, roleId);
       if (role && data) {
@@ -131,6 +232,12 @@ const GroupWSMixin = (Cls = Object) =>
       }
     }
 
+    /**
+     * Called to change reactive member's role of a group
+     * @param {Number} group_id - Group id
+     * @param {Number} user_id - User id
+     * @param {Object} data - new role data
+     */
     changeMemberRole({ group_id, user_id, data: newRole }) {
       const member = this.getMember(group_id, user_id);
       if (member) {
@@ -140,6 +247,11 @@ const GroupWSMixin = (Cls = Object) =>
       }
     }
 
+    /**
+     * Removes list of tracking members from a GroupWS object
+     * @param {Number} groupId - Group id
+     * @param {Array} data - List of member user ids
+     */
     clearMembers({ group_id, data }) {
       const members = this.getMembers(group_id);
       if (members && data) {
@@ -147,6 +259,13 @@ const GroupWSMixin = (Cls = Object) =>
       }
     }
 
+    /**
+     * Removes and stops tracking role of a group,
+     * and replaces it with new one
+     * @param {Number} groupId - Group id
+     * @param {Number} userId - User id
+     * @param {Object} data - New Role object
+     */
     delGroupRole({ group_id, role_id, data: newRoleData }) {
       const roleRef = this.getRole(group_id, role_id);
       if (roleRef) {
@@ -156,13 +275,24 @@ const GroupWSMixin = (Cls = Object) =>
       }
     }
 
+    /**
+     * Called to stop tracking role of a group
+     * @param {Number} groupId - Group id
+     * @param {Number} roleId - role id
+     */
     removeRole(groupId, roleId) {
       try {
         this.getRoles(groupId).delete(roleId);
       } catch (error) {}
     }
 
-    // method to remove group-event
+    /**
+     * Removes event from a group
+     * @param {Number} id - Group id
+     * @param {String} event - User id
+     * @param {Number} roleId - Member role id
+     * @return {Proxy} reactive member object
+     */
     rmGroupEvent(id, event, cb) {
       try {
         /** @type {Map} */
@@ -178,10 +308,22 @@ const GroupWSMixin = (Cls = Object) =>
       }
     }
 
+    /**
+     * Removes GroupWS object from group ws map
+     * @param {Number} id - Group id
+     */
     rmGroupWS(id) {
       this.groupWS.delete(id);
     }
 
+    /**
+     * Connects session to group channel layer to track
+     * Group WS events
+     * @param {Number} groupId - Group id
+     * @param {Function} newMsgCB - New message callback
+     * @param {Function} updateMsgCB - Update message callback
+     * @param {Function} deleteMsgCB - Delete message callback
+     */
     connectGroup(group_id, newMsgCB, updateMsgCB, deleteMsgCB) {
       this.sendGroupEvent({ event: "connect", group_id });
       this.onGroup(group_id, "new_msg", newMsgCB);
@@ -189,11 +331,21 @@ const GroupWSMixin = (Cls = Object) =>
       this.onGroup(group_id, "del_msg", deleteMsgCB);
     }
 
+    /**
+     * Disconnects from group layer and deletes GroupWS object
+     * @param {Number} groupId - Group id
+     */
     disconnectGroup(group_id) {
       this.sendGroupEvent({ event: "disconnect", group_id });
       this.rmGroupWS(group_id);
     }
 
+    /**
+     * Base method to send group events
+     * @param {String} event - event name
+     * @param {Number} group_id - Group id
+     * @param {Object} options - extra data
+     */
     sendGroupEvent({ event, group_id, ...options }) {
       this.sendEvent({
         event_type: "group",
@@ -205,6 +357,10 @@ const GroupWSMixin = (Cls = Object) =>
   };
 
 const ChatWSMixin = (Cls = Object) =>
+  /**
+   * Mixin to handle Private Chat WS events
+   */
+
   class extends Cls {
     constructor() {
       super();
@@ -257,29 +413,50 @@ const ChatWSMixin = (Cls = Object) =>
   };
 
 const UserWSMixin = (Cls = Object) =>
+  /**
+   * Mixin to handle User related WS events
+   */
+
   class extends Cls {
     constructor() {
       super();
-      // User event listeners
       this.userWSUpdate = false;
+      // User event listeners
       this.userEvents = new Map();
+      // Map of tracking people
       this.trackingPeople = new Map();
+      // Base Events for tracking people
       this.userTrackEvents = new Set(["profile_edited", "joint", "left"]);
       this.onUser("profile_edited", this.updateProfile);
       this.onUser("joint", this.userJoint);
       this.onUser("left", this.userLeft);
     }
 
+    /**
+     * Returns whether user is being tracked
+     * @param {Number} user_id - User id
+     * @return {Boolean}
+     */
     hasUser(user_id) {
       return this.trackingPeople.has(user_id);
     }
 
+    /**
+     * Returns trackable reactive user object if
+     * @param {Number} user_id - User id
+     * @return {[Proxy, undefined]} reactive user object
+     */
     getUser(user_id) {
       try {
         return this.trackingPeople.get(user_id).target.value;
       } catch (error) {}
     }
 
+    /**
+     * Returns track user object
+     * @param {Number} user_id - User id
+     * @return {[Proxy, undefined]} reference to track object
+     */
     getTrackUser(user_id) {
       try {
         return this.trackingPeople.get(user_id);
@@ -287,7 +464,10 @@ const UserWSMixin = (Cls = Object) =>
     }
 
     /**
-     * User related events handler.
+     * User related message event handler.
+     * Calls listeners of an event
+     * @param {String} event - Event name
+     * @param {Object} data - WS object
      */
     userMessage(event, data) {
       if (this.userTrackEvents.has(event)) {
@@ -296,8 +476,14 @@ const UserWSMixin = (Cls = Object) =>
       this.callEventHandler(this.userEvents, event, data);
     }
 
+    /**
+     * User track related events data wrapper
+     * @param {Number} user_id - User id
+     * @param {Object} data - user WS data
+     * @return {Object} wrapped data
+     */
     userTrackHandler({ user_id, data }) {
-      if (this.sessionID == user_id) {
+      if (this.sessionId == user_id) {
         this.userWSUpdate = true;
       }
       const user = this.getUser(user_id);
@@ -306,8 +492,9 @@ const UserWSMixin = (Cls = Object) =>
     }
 
     /**
-     * Adds listener for user related events
-     * with given event.
+     * Sets listener for given event
+     * @param {String} event - Event name
+     * @param {Function} callback - callback function
      */
     onUser(event, callback) {
       this.setListener(this.userEvents, event, callback);
@@ -340,8 +527,8 @@ const UserWSMixin = (Cls = Object) =>
     }
 
     /**
-     * Called to top tracking events of a user.
-     * @param {Any} user_id - user to untrack.
+     * Called to stop tracking events of a user.
+     * @param {Any} user_id - user id.
      */
     leaveUser(user_id) {
       const tUser = this.getTrackUser(user_id);
@@ -365,6 +552,11 @@ const UserWSMixin = (Cls = Object) =>
       user.status = 0;
     }
 
+    /**
+     * Base user ws event sender
+     * @param {String} event - Event name
+     * @param {Object} options - extra data
+     */
     sendUserEvent({ event, ...options }) {
       this.sendEvent({ event_type: "user", event, ...options });
     }
@@ -379,27 +571,33 @@ const UserWSMixin = (Cls = Object) =>
  * WS(WebSocket) protocol
  */
 class SessionSocket extends UserWSMixin(ChatWSMixin(GroupWSMixin())) {
-  // endpoint to connect to
+  /**
+   * Base session socket class that inherits from
+   * all ws event handler classes
+   */
+
+  // ws route endpoint
   endpoint = "ws://localhost:6969/ws/session/";
 
   /**
    * Initializes SessionSocket instance.
    * @param {String} token - User token. Used to connect to server
    */
-  constructor(token, sessionID) {
+  constructor(token, sessionId) {
     super();
     // WebSocket object
     this._socket = new WebSocket(`${this.endpoint}?token=${token}`);
-    this.sessionID = sessionID;
+    // current session user id
+    this.sessionId = sessionId;
     // on message call base message handler method
     this.onWS("message", (...args) => this.onMessage(...args));
   }
 
   /**
-   * Base method that adds listener to WS object.
-   * @param {String} type - event type as string.
-   * @param {Function} callback - callback to call when event is occurred.
-   * @param {Object} options - other event setup options.
+   * Base method to set ws event listeners.
+   * @param {String} type - ws event name.
+   * @param {Function} callback - callback function.
+   * @param {Object} options - extra options.
    */
   onWS(type, callback, options) {
     this._socket.addEventListener(
@@ -413,8 +611,8 @@ class SessionSocket extends UserWSMixin(ChatWSMixin(GroupWSMixin())) {
   }
 
   /**
-   * Base message event handler.
-   * Calls message event handler based on event type
+   * Base ws message event handler.
+   * Calls base message event handler based on event type
    */
   onMessage({ event_type, event, data }, wsEvent) {
     try {
@@ -441,7 +639,7 @@ class SessionSocket extends UserWSMixin(ChatWSMixin(GroupWSMixin())) {
   }
 
   /**
-   * Base method to remove an event from events mapping
+   * Base method to remove an event from mapping
    */
   removeEvent(dict, event) {
     dict.delete(event);
@@ -454,6 +652,12 @@ class SessionSocket extends UserWSMixin(ChatWSMixin(GroupWSMixin())) {
     this._socket.send(JSON.stringify(data));
   }
 
+  /**
+   * Base ws event sender to the server
+   * @param {String} event_type - Type of event
+   * @param {String} event - Event name
+   * @param {Object} options - extra data to send
+   */
   sendEvent({ event_type, event, ...options }) {
     if (event_type) {
       this.send({ event_type, event, ...options });
@@ -487,11 +691,11 @@ export const useSessionStore = defineStore("session", {
   state: () => ({ ...defaultStates }),
 
   getters: {
-    // property that defines if user is authenticated
+    // indicates whether session is authenticated
     isAuthenticated: (state) => {
       return !!state.user;
     },
-    // property that defines if session is loaded
+    // indicates whether session is loaded
     isLoaded: (state) => {
       return state.user !== undefined;
     },
@@ -508,10 +712,10 @@ export const useSessionStore = defineStore("session", {
 
   actions: {
     /**
-     * Animates elm with given class and awaits promise.
-     * @param {Promise} promise - promise to await
+     * Animates promise with given elm and class.
+     * @param {Promise} promise - promise to wrap
      * @param {HTMLElement} elm - elm to animate
-     * @param {String} class name to animate with.
+     * @param {String} class - css selector.
      */
     async animate(promise, elm, cls = "load-anim") {
       elm = elm || document.body;
@@ -561,14 +765,14 @@ export const useSessionStore = defineStore("session", {
     },
 
     /**
-     * Base request method that controls requests related with token.
+     * Base request method to send token related requests.
      *
      * If any error occurs during request and it is related with token
      * it will try to refresh token
      *
      * if it doesn't work user will be logged out,
      * otherwise request will be sent again
-     * @param {Object} config - request config object same as axios config.
+     * @param {Object} config - axios request config.
      */
     async request(config) {
       this.access || (this.access = "123");
@@ -597,10 +801,10 @@ export const useSessionStore = defineStore("session", {
     },
 
     /**
-     * Sends get request to a url.
-     * @param {String} url - url to send request
-     * @param {Object} config - request configuration
-     * @return {Promise} Returns promise.
+     * Sends get request.
+     * @param {String} url - endpoint URL
+     * @param {Object} config - extra axios config
+     * @return {Promise} Request promise.
      */
     get(url, config) {
       (config || (config = {})).url = url;
@@ -615,10 +819,10 @@ export const useSessionStore = defineStore("session", {
     },
 
     /**
-     * Sends delete request to a url.
-     * @param {String} url - url to send request
-     * @param {Object} config - request configuration
-     * @return {Promise} Returns promise.
+     * Sends delete request.
+     * @param {String} url - endpoint URL
+     * @param {Object} config - extra axios config
+     * @return {Promise} Request promise.
      */
     delete(url, config) {
       (config || (config = {})).url = url;
@@ -628,10 +832,10 @@ export const useSessionStore = defineStore("session", {
 
     /**
      * Base method for requests with body (post, put, patch, etc.).
-     * @param {String} method - request method
-     * @param {String} url - url to send request
-     * @param {Object} config - request configuration
-     * @return {Promise} Returns promise.
+     * @param {String} method - method name
+     * @param {String} url - endpoint URL
+     * @param {Object} config - axios config
+     * @return {Promise} - Request promise.
      */
     dataRequest(method, url, data, config) {
       const _new = { url, data, method };
@@ -639,7 +843,7 @@ export const useSessionStore = defineStore("session", {
     },
 
     /**
-     * Method to send post request extends 'dataRequest' function
+     * Method to send post request wraps 'dataRequest' function
      * @return {Promise} Returns promise.
      */
     post(...args) {
@@ -647,7 +851,7 @@ export const useSessionStore = defineStore("session", {
     },
 
     /**
-     * Method to send put request extends 'dataRequest' function
+     * Method to send put request wraps 'dataRequest' function
      * @return {Promise} Returns promise.
      */
     put(...args) {
@@ -655,13 +859,19 @@ export const useSessionStore = defineStore("session", {
     },
 
     /**
-     * Method to send patch request extends 'dataRequest' function
+     * Method to send patch request wraps 'dataRequest' function
      * @return {Promise} Returns promise.
      */
     patch(...args) {
       return this.dataRequest("patch", ...args);
     },
 
+    /**
+     * Sends blob request and downloads file if request succeeds.
+     * @param {String} url - endpoint URL
+     * @param {String} name - file name to download as
+     * @return {Promise} Request promise.
+     */
     async download(url, name) {
       const { data } = await this.get(url, {
         responseType: "blob",
@@ -677,6 +887,12 @@ export const useSessionStore = defineStore("session", {
       URL.revokeObjectURL(href);
     },
 
+    /**
+     * Base method to fetch user infos
+     * @param {Number} userId - User id
+     * @param {String} name - file name to download as
+     * @return {Promise} Request promise.
+     */
     async fetchUser(userId) {
       return (await this.get(`users/${userId}/`)).data;
     },
@@ -746,6 +962,11 @@ export const useSessionStore = defineStore("session", {
       this.socket.onWS("open", callback);
     },
 
+    /**
+     * Refreshes given track user object
+     * @param {Object} user - tracking user object
+     * @return {Promise} Request promise.
+     */
     refreshUser(user) {
       const { id } = user;
       const key = `user:${id}`;
@@ -759,6 +980,12 @@ export const useSessionStore = defineStore("session", {
       this.fetching.set(key, prom);
     },
 
+    /**
+     * Refreshes given track role object of a group
+     * @param {Object} group - Role Group
+     * @param {Object} role - tracking role object
+     * @return {Promise} Request promise.
+     */
     refreshRole(group, role) {
       const { id } = role;
       const key = `group(${group.id}):role(${id})`;

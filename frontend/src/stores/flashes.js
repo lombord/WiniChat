@@ -1,4 +1,4 @@
-// global store for flash messages
+// Global store for flash messages
 
 import { defineStore } from "pinia";
 

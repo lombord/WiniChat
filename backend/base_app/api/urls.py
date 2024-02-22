@@ -1,3 +1,5 @@
+"""App API urls"""
+
 from django.urls import include, path
 
 from rest_framework.routers import SimpleRouter
@@ -10,11 +12,13 @@ from rest_framework_simplejwt.views import (
 from . import views as V
 from . import viewsets as VS
 
+# ViewSet routes
 router = SimpleRouter()
 router.register("messages", VS.MessageViewSet, basename="message")
 router.register("groups", VS.GroupViewSet, basename="group")
 router.register("public-groups", VS.PGroupViewSet, basename="public-group")
 
+# Token related routes
 token_urls = [
     path("", TokenObtainPairView.as_view(), name="token_obtain"),
     path("refresh/", TokenRefreshView.as_view(), name="token_refresh"),
@@ -22,6 +26,7 @@ token_urls = [
 ]
 
 
+# Private Chat related routes
 chat_urls = [
     path("", V.ChatsAPIView.as_view(), name="chats"),
     path(
