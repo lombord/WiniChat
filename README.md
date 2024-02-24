@@ -1,6 +1,10 @@
 
 # WiniChat
 
+### Overview
+![Overview dark theme](/Screenshots/1.png?raw=true)
+![Overview light theme](/Screenshots/2.png?raw=true)
+
 WiniChat is a Real-Time SPA chat app which was inspired by `Telegram` and `Discord`. It implements communication through `private`(DM) and `group` chats with the ability to share `media files` such as photo, audio and video.
 
 
