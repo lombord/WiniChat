@@ -1,9 +1,8 @@
 
 # WiniChat
 
-### Overview
 ![Overview dark theme](/Screenshots/1.png?raw=true)
-![Overview light theme](/Screenshots/2.png?raw=true)
+### [Live Demo](http://ec2-13-51-69-199.eu-north-1.compute.amazonaws.com/)
 
 WiniChat is a Real-Time SPA chat app which was inspired by `Telegram` and `Discord`. It implements communication through `private`(DM) and `group` chats with the ability to share `media files` such as photo, audio and video.
 
@@ -90,3 +89,9 @@ In this year I'm planning to keep working on this project adding more features, 
 ```bash
   npm run dev
 ```
+
+## Update 3/18/2024
+
+- Added Live Demo
+- Created docker images for each application
+- Fixed bugs and set up the project for deployment
