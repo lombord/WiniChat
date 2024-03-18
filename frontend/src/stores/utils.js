@@ -2,6 +2,8 @@
 
 import { defineStore } from "pinia";
 import { markRaw, defineComponent, defineAsyncComponent } from "vue";
+const modules = import.meta.glob("../components/**/*.vue");
+const moduleDirs = import.meta.glob("../components/**/");
 
 export const useUtilsStore = defineStore("utils", {
   state: () => ({
@@ -27,7 +29,7 @@ export const useUtilsStore = defineStore("utils", {
         const { fetchingComps } = this;
         let prom = fetchingComps.get(path);
         if (!prom) {
-          prom = import(/* @vite-ignore */ `/src/components/${path}`);
+          prom = modules[`../components/${path}`]();
           fetchingComps.set(path, prom);
           component = await prom;
           fetchingComps.delete(path);

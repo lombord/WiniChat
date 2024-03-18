@@ -217,6 +217,7 @@ export default {
 
     async addMsg(msg, scroll = false) {
       if (this.previous) return;
+      this.next && this.nextOff++;
       msg = reactive(msg);
       const context = this.unshiftMsg(msg);
       if (scroll || this.isFullScroll) {
@@ -338,9 +339,12 @@ export default {
     },
 
     removeMsg(id) {
+      console.log(this.nextLimit, this.nextOff);
       const [context, idx] = this.findMsgIdx(id);
       if (context && idx >= 0) {
-        this.next && this.nextOff--;
+        if (this.next && this.nextOff > 0) {
+          this.nextOff--;
+        }
         delete this.contexts[id];
         const [msg] = context.splice(idx, 1);
         if (!msg.seen && msg.owner != this.user.id) {

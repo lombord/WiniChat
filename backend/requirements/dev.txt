@@ -1,4 +1,4 @@
--r common.txt
+-r "./common.txt"
 
 # Used to automatically format python files 
 autopep8==2.0.4

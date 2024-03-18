@@ -1,0 +1,81 @@
+version: "3.8"
+services:
+  webserver:
+    image: lombord/winichat-webserver
+    deploy:
+      mode: replicated
+      replicas: 1
+      update_config:
+        order: start-first
+    depends_on:
+      - django
+    environment:
+      - DJ_HOST=${DJ_HOST}
+      - DJ_PORT=${DJ_PORT}
+      - DJ_MAX_BODY_SIZE=${DJ_MAX_BODY_SIZE}
+    volumes:
+      - "static-data:/vol/web"
+    ports:
+      - target: 8080
+        published: 80
+    networks:
+      - frontend
+    init: true
+    stop_grace_period: 1.5s
+
+  django:
+    image: lombord/winichat-api:1.0
+    deploy:
+      mode: replicated
+      replicas: 1
+      update_config:
+        order: start-first
+    env_file:
+      - .env
+    volumes:
+      - "static-data:/vol/web"
+    networks:
+      - backend
+      - frontend
+    depends_on:
+      - postgresdb
+      - redis-channels
+    expose:
+      - 8000
+    init: true
+
+  redis-channels:
+    image: redis:7.2.4-alpine3.19
+    expose:
+      - 6379
+    networks:
+      - backend
+    init: true
+
+  postgresdb:
+    image: postgres:13.14-alpine3.19
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASS}
+      - POSTGRES_DB=${DB_NAME}
+    healthcheck:
+      test: ["CMD-SHELL", "sh -c 'pg_isready -U ${DB_USER} -d ${DB_NAME}'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    networks:
+      - backend
+    expose:
+      - 5432
+    init: true
+
+volumes:
+  pgdata:
+  static-data:
+
+networks:
+  backend:
+  frontend:

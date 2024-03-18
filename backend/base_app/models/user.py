@@ -238,7 +238,7 @@ class User(AbstractUser):
         """
         Update user status
         """
-        type(self).objects.filter(pk=self.pk).update(status=F("status") * 0 + value)
+        type(self).objects.filter(pk=self.pk).update(status=F("status") + value)
 
     @property
     def is_online(self):

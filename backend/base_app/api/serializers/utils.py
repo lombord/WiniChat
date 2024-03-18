@@ -30,5 +30,9 @@ class AbsoluteURLField(S.Field):
 def clean_old_photo(file):
     """Cleans old file if it exists and is not default"""
     name = os.path.basename(file.name)
-    if not name.startswith("default"):
+    if name.startswith("default"):
+        return
+    try:
         os.remove(file.path)
+    except Exception:
+        pass

@@ -151,10 +151,17 @@ export default {
 
     // fetches options from given config url
     async fetchServerOptions() {
-      const promise = this.request({ url: this.config.url, method: "options" });
-      const response = await this.$session.animate(promise, this.$el);
-      const options = response.data.actions[this.optionAction.toUpperCase()];
-      this.setServerOptions(options);
+      try {
+        const promise = this.request({
+          url: this.config.url,
+          method: "OPTIONS",
+        });
+        const response = await this.$session.animate(promise, this.$el);
+        const options = response.data.actions[this.optionAction.toUpperCase()];
+        this.setServerOptions(options);
+      } catch (error) {
+        return;
+      }
     },
 
     // sets server options after fetching

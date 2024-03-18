@@ -76,6 +76,7 @@ routes.forEach((route) => {
 });
 
 const router = createRouter({
+  mode: "history",
   routes,
   history: createWebHistory(import.meta.env.BASE_URL),
 });

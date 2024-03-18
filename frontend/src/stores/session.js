@@ -1,8 +1,6 @@
 // Store that controls communication with server
 // using `http(s)` and `ws` protocols
 
-
-
 import { ref, reactive, markRaw, shallowReadonly } from "vue";
 import { defineStore } from "pinia";
 import axios from "axios";
@@ -577,7 +575,14 @@ class SessionSocket extends UserWSMixin(ChatWSMixin(GroupWSMixin())) {
    */
 
   // ws route endpoint
-  endpoint = "ws://localhost:6969/ws/session/";
+
+  get endpoint() {
+    let protocol = "ws";
+    if (location.protocol == "https") {
+      protocol = "wss";
+    }
+    return `${protocol}://${location.host}/django-ws/session/`;
+  }
 
   /**
    * Initializes SessionSocket instance.
@@ -585,6 +590,7 @@ class SessionSocket extends UserWSMixin(ChatWSMixin(GroupWSMixin())) {
    */
   constructor(token, sessionId) {
     super();
+
     // WebSocket object
     this._socket = new WebSocket(`${this.endpoint}?token=${token}`);
     // current session user id
@@ -1016,15 +1022,4 @@ export const useSessionStore = defineStore("session", {
       return roleRef;
     },
   },
-});
-
-const sessionStore = useSessionStore();
-
-// tracks changes of session store if access or refresh has
-// changed it'll be updated in local storage too.
-sessionStore.$subscribe((mutation, state) => {
-  if (!state) return;
-  const { access, refresh } = state;
-  access && localStorage.setItem("access", state.access);
-  refresh && localStorage.setItem("refresh", state.refresh);
 });

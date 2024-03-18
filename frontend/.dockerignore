@@ -1,0 +1,14 @@
+node_modules
+.DS_Store
+dist
+dist-ssr
+coverage
+*.local
+Dockerfile
+
+README.md
+.gitignore
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json

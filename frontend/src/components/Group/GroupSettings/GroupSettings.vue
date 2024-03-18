@@ -79,23 +79,23 @@ export default {
       const { group } = this;
       return {
         members: {
-          path: "Group/GroupMembers",
+          path: "Group/GroupMembers/GroupMembers.vue",
           attrs: { group },
         },
         roles: {
-          path: "Group/GroupRoles",
+          path: "Group/GroupRoles/GroupRoles.vue",
           attrs: { group },
         },
         bans: {
-          path: "Group/GroupBans",
+          path: "Group/GroupBans/GroupBans.vue",
           attrs: { group },
         },
         invite: {
-          path: "Group/GroupInvite",
+          path: "Group/GroupInvite/GroupInvite.vue",
           attrs: { group },
         },
         info: {
-          path: "Group/GroupDetails",
+          path: "Group/GroupDetails/GroupPage.vue",
           attrs: { group },
         },
       };

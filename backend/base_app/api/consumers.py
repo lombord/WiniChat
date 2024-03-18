@@ -3,7 +3,6 @@
 import asyncio
 from functools import wraps
 from typing import Iterable
-from weakref import WeakSet
 
 from channels.generic import websocket as WS
 from channels.db import database_sync_to_async as DSA
@@ -33,7 +32,7 @@ def exclude_sender(method):
     @wraps(method)
     async def wrapper(self, event: dict):
         # check if sender is not current channel
-        if self.channel_name != event.pop("channel_name", None):
+        if self.channel_name != event.get("channel_name", None):
             return await method(self, event)
 
     return wrapper
@@ -500,13 +499,14 @@ class UserConsumerMixin:
             *(self.notify_user(user_id, event, data) for user_id in users)
         )
 
+    @DSA
     def get_sessions_count(self):
         """
         Gets the number of online sessions.
         Currently works only with 'InMemoryStorage' class
         """
-        sessions = self.channel_layer.groups.get(self.user_g, [])
-        return len(sessions)
+        self.user.refresh_from_db(fields=["status"])
+        return self.user.status
 
     async def send_watch_event(self, event: str, data=None):
         """Base method to send watch events"""
@@ -535,23 +535,10 @@ class SessionConsumer(
     Base session consumer that includes all types of server WS event handlers.
     """
 
-    # Set of all created session channels
-    __all_objects = WeakSet()
-
+    # Connected channels count
+    __connected = 0
     # Base event handler pattern
     handler_p = "%s_handler"
-
-    def __new__(cls, *args, **kwargs):
-        obj = super().__new__(cls, *args, **kwargs)
-        cls.__all_objects.add(obj)
-        return obj
-
-    def __del__(self):
-        print(
-            "Session %r is disconnected" % self.channel_name,
-            "All connections: %d" % (len(self.__all_objects) - 1),
-            sep="\n",
-        )
 
     async def websocket_connect(self, message):
         """
@@ -566,26 +553,32 @@ class SessionConsumer(
         Accepts connection and updates user status
         """
         await self.accept()
+        type(self).__connected += 1
         print(
             "Session %r is connected" % self.channel_name,
-            "All connections: %d" % len(self.__all_objects),
+            "All connections: %d" % self.__connected,
             sep="\n",
         )
-        cnt = self.get_sessions_count()
-        if cnt == 1:
+        status = await self.get_sessions_count()
+        if not status:
             await self.send_watch_event("joint")
-        await DSA(self.user.update_status)(cnt)
+        await DSA(self.user.update_status)(1)
         print("Connected to %s" % self.user)
 
     async def disconnect(self, code):
         """
         Updates user status and notifies user watchers before disconnect
         """
-        cnt = self.get_sessions_count()
-        if not cnt:
+        status = await self.get_sessions_count()
+        if status <= 1:
             await self.send_watch_event("left")
-        await DSA(self.user.update_status)(cnt)
-        print("Disconnected from %s" % self.user)
+        await DSA(self.user.update_status)(-1)
+        type(self).__connected -= 1
+        print(
+            "Disconnected from %s" % self.user,
+            "All connections: %d" % self.__connected,
+            sep="\n",
+        )
 
     async def receive_json(self, content: dict, **kwargs):
         """

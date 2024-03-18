@@ -1,25 +1,27 @@
+import os
 from pathlib import Path
 from datetime import timedelta
-from django.core.management.commands.runserver import Command as runserver
-
-
-runserver.default_port = "6969"
+from django.core.management.utils import get_random_secret_key
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = not int(os.getenv("DJANGO_IS_PRODUCTION", "0"))
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-y#eqy(88=*^005h40)lsn_4)rx&wm+tjs6w#yr5vv(qlz2+z-8"
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+if DEBUG:
+    SECRET_KEY = "t0EvsE0zkCydedHr2IRIVi9CoXPjJce"
+else:
+    SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", get_random_secret_key())
 
-ALLOWED_HOSTS = []
+
+ALLOWED_HOSTS = [
+    host for host in os.getenv("DJANGO_ALLOWED_HOSTS", "").split(",") if host
+]
 
 
 # Application definition
@@ -77,8 +79,6 @@ WSGI_APPLICATION = "wini_chat.wsgi.application"
 
 ASGI_APPLICATION = "wini_chat.routing.application"
 
-CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
-
 
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
@@ -86,11 +86,10 @@ CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "winichat",
-        "USER": "postgres",
-        "PASSWORD": "123",
-        "HOST": "localhost",
-        "PORT": "",
+        "HOST": os.getenv("DB_HOST", "localhost"),
+        "NAME": os.getenv("DB_NAME", "winichat"),
+        "USER": os.getenv("DB_USER", "postgres"),
+        "PASSWORD": os.getenv("DB_PASS", "123"),
     }
 }
 
@@ -133,10 +132,14 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
-STATIC_URL = "static/"
+MEDIA_URL = "/static/media/"
+STATIC_URL = "/static/static/"
 
-MEDIA_URL = "media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_ROOT = "/vol/web/media"
+STATIC_ROOT = "/vol/web/static"
+if DEBUG:
+    MEDIA_ROOT = BASE_DIR / "media/"
+    STATIC_ROOT = BASE_DIR / "static/"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
@@ -148,14 +151,32 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 INTERNAL_IPS = [
     "127.0.0.1",
 ]
+
 DEBUG_TOOLBAR_CONFIG = {
     "RENDER_PANELS": False,
 }
 
 
-# # # # # # # # #
-#  API SETTINGS  #
-# # # # # # # # #
+# # # # # # # # # # # #
+#  API/Server SETTINGS  #
+# # # # # # # # # # # #
+
+if DEBUG:
+    CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
+else:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [
+                    (
+                        os.getenv("REDIS_HOST", "localhost"),
+                        int(os.getenv("REDIS_PORT", "6379")),
+                    )
+                ],
+            },
+        },
+    }
 
 # Rest Framework Settings
 REST_FRAMEWORK = {
@@ -172,15 +193,18 @@ REST_FRAMEWORK = {
 
 # JWT settings
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=2),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=14),
     "ROTATE_REFRESH_TOKENS": True,
 }
 
 # CORS settings
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
+    origin
+    for origin in os.getenv("DJANGO_ORIGINS", "http://localhost:5173").split(",")
+    if origin
 ]
 
+
 # allowed api urls pattern
-CORS_URLS_REGEX = r"^/(?:api|media)/.*$"
+CORS_URLS_REGEX = r"^/(?:api|static)/.*$"

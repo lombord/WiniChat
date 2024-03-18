@@ -11,6 +11,16 @@ import FetchObserver from "@/components/Fetch/FetchObserver.vue";
 import IdTag from "@/components/UI/IdTag.vue";
 import IconTag from "@/components/UI/IconTag.vue";
 
+// Global store imports
+import { useSessionStore } from "@/stores/session.js";
+import { useFlashesStore } from "@/stores/flashes.js";
+import { useUtilsStore } from "@/stores/utils.js";
+import { useProfileStore } from "@/stores/profile.js";
+import { useChatsStore } from "@/stores/chats.js";
+import { useGroupStore } from "@/stores/group.js";
+import { useMediaStore } from "@/stores/media.js";
+import { useTracksStore } from "@/stores/tracks.js";
+
 // pass loadRouter function to give RootComponent
 // opportunity to load router when it is ready
 const app = createApp(App, {
@@ -19,17 +29,14 @@ const app = createApp(App, {
 
 app.use(createPinia());
 
-// Global store imports
-const { useSessionStore } = await import("@/stores/session.js");
-const { useFlashesStore } = await import("@/stores/flashes.js");
-const { useUtilsStore } = await import("@/stores/utils.js");
-const { useProfileStore } = await import("@/stores/profile.js");
-const { useChatsStore } = await import("@/stores/chats.js");
-const { useGroupStore } = await import("@/stores/group.js");
-const { useMediaStore } = await import("@/stores/media.js");
-const { useTracksStore } = await import("@/stores/tracks.js");
-
 const sessionStore = useSessionStore();
+
+sessionStore.$subscribe((mutation, state) => {
+  if (!state) return;
+  const { access, refresh } = state;
+  access && localStorage.setItem("access", state.access);
+  refresh && localStorage.setItem("refresh", state.refresh);
+});
 
 // list of global plugins
 const globalPlugins = [

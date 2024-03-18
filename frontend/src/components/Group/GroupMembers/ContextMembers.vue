@@ -77,7 +77,7 @@ export default {
         label: "Role",
         icon: "fa-solid fa-user-shield",
         hidden: computed(() => !this.hasPermOver(this.currRole, "manage_role")),
-        path: "Group/GroupRoles/SearchRole",
+        path: "Group/GroupRoles/SearchRole/SearchBase.vue",
         nested: {
           group: computed(() => this.group),
           currRoleId: computed(() => this.currRole?.id),

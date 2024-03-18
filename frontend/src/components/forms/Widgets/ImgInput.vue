@@ -30,7 +30,7 @@ export default {
       type: String,
       default: null,
     },
-    
+
     modelValue: {
       default: null,
     },
@@ -67,6 +67,12 @@ export default {
     blobUrl(nVal, oVal) {
       if (oVal && nVal != oVal) {
         URL.revokeObjectURL(oVal);
+      }
+    },
+
+    src(nVal, oVal) {
+      if (nVal && nVal != oVal) {
+        this.blobUrl = null;
       }
     },
   },

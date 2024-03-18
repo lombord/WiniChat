@@ -1,0 +1,4 @@
+-r "./common.txt"
+
+channels-redis==4.1.0
+redis==5.0.1

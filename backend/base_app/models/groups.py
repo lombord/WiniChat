@@ -29,7 +29,7 @@ class GroupQuerySet(models.QuerySet):
 
     def search_groups(self, query: str, user):
         """
-        Searches public groups by query for a user 
+        Searches public groups by query for a user
         excluding banned groups of the user
         """
         exp = Q(public=False) | Q(pk__any=user.all_groups.values("pk").order_by())
@@ -319,7 +319,7 @@ class Group(models.Model):
         if perms is None:
             qs = qs.defer("joint", "added_by")
         else:
-            perms = set(chain(GroupRole.SPECIAL_PROPS, perms))
+            perms = set(chain(GroupRole.SPECIAL_PROPS, perms or []))
             qs = qs.only("group", "user", *("role__%s" % p for p in perms))
         return qs
 

@@ -86,9 +86,13 @@ export default {
     getFetchUrl(params) {
       params = params || {};
       if (!params.limit) params.limit = this.limit;
-      const url = new URL(this.fetchUrl, this.$request.defaults.baseURL);
-      Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-      return url.toString();
+      let { pathname, searchParams } = new URL(
+        this.fetchUrl,
+        "http://localhost:5173"
+      );
+      Object.entries(params).forEach(([k, v]) => searchParams.set(k, v));
+      pathname = pathname.replace(/^\/?api/, "");
+      return `${pathname}?${searchParams}`;
     },
 
     getFetchParams(url) {

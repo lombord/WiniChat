@@ -22,10 +22,6 @@ daphne==4.0.0
 # Used to support WebSocket protocol
 channels==4.0.0
 
-# (Optional)Will be used to support Reddis for django channels
-channels-redis==4.1.0
-redis==5.0.1
-
 # Used to read metadata mainly from audio files
 mutagen==1.47.0
 

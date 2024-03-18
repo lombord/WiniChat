@@ -1,0 +1,7 @@
+**/__pycache__
+**/*.pyc
+media/*
+!./media/defaults
+requirements.txt
+Dockerfile
+.gitignore

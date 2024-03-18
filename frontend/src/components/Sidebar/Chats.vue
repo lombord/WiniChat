@@ -64,12 +64,15 @@ export default {
   },
 
   watch: {
-    current(chat) {
+    async current(chat) {
       if (chat) {
+        await this.$nextTick();
         let elm = null;
         try {
           elm = this.$refs[`chat(${this.getKey(chat)})`][0].$el;
-        } catch (error) {}
+        } catch (error) {
+          console.log(error);
+        }
         if (!elm) return;
         this.$el
           .querySelectorAll(".chat-active")

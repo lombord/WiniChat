@@ -1,0 +1,81 @@
+version: "3.8"
+
+services:
+
+  webserver:
+    build:
+      context: ./frontend
+    depends_on:
+      - django
+    environment:
+      - DJ_HOST=${DJ_HOST}
+      - DJ_PORT=${DJ_PORT}
+      - DJ_MAX_BODY_SIZE=${DJ_MAX_BODY_SIZE}
+    volumes:
+      - "static-data:/vol/web"
+    ports:
+      - "80:8080"
+    networks:
+      - frontend
+    init: true
+    stop_grace_period: 1.5s
+
+  django:
+    build:
+      context: ./backend
+      target: production
+    env_file:
+      - .env
+    volumes:
+      - "static-data:/vol/web"
+    networks:
+      - backend
+      - frontend
+    depends_on:
+      postgresdb:
+        condition: service_healthy
+      redis-channels:
+        condition: service_started
+    expose:
+      - 8000
+    init: true
+    restart: unless-stopped
+
+  redis-channels:
+    image: redis:7.2.4-alpine3.19
+    expose:
+      - 6379
+    networks:
+      - backend
+    init: true
+    restart: unless-stopped
+
+  postgresdb:
+    image: postgres:13.14-alpine3.19
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASS}
+      - POSTGRES_DB=${DB_NAME}
+    healthcheck:
+      test: ["CMD-SHELL", "sh -c 'pg_isready -U ${DB_USER} -d ${DB_NAME}'"]
+      interval: 1m30s
+      start_interval: 10s
+      timeout: 30s
+      retries: 5
+      start_period: 5s
+    networks:
+      - backend
+    expose:
+      - 5432
+    init: true
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  static-data:
+
+networks:
+  backend:
+  frontend:

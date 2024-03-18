@@ -12,11 +12,12 @@ export const useMediaStore = defineStore("media", {
   actions: {},
 });
 
-const mStore = useMediaStore();
-
 document.addEventListener("keydown", (e) => {
+  const mStore = useMediaStore();
   const component = mStore.currentMedia;
-  if (!component) return;
+  if (!component || document.activeElement != document.body) return;
+  const rect = component.$el.getBoundingClientRect();
+  if (!(rect.width && rect.height)) return;
   let hasAny = true;
   const { code } = e;
   const list = [code.toLowerCase()];
