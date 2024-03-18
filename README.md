@@ -53,42 +53,7 @@ In this year I'm planning to keep working on this project adding more features, 
 ### 📊 DataBase:
 - PostgreSQL
 
-## 💉 Installation 
 
-### Server
-```bash
-  cd backend
-```
-```bash
-  py -m pip install -r requirements.txt
-```
-
-### Client
-```bash
-  cd frontend
-```
-```bash
-  npm install
-```
-
-
-## ✅ Usage
-
-### Server
-```bash
-  cd backend
-```
-```bash
-  py manage.py runserver
-```
-
-### Client
-```bash
-  cd frontend
-```
-```bash
-  npm run dev
-```
 
 ## Update 3/18/2024
 
