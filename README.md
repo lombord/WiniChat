@@ -2,7 +2,7 @@
 # WiniChat
 
 ![Overview dark theme](/Screenshots/1.png?raw=true)
-### [Live Demo](http://ec2-13-51-69-199.eu-north-1.compute.amazonaws.com/)
+### [Live Demo](https://winichat.duckdns.org/chat/)
 
 WiniChat is a Real-Time SPA chat app which was inspired by `Telegram` and `Discord`. It implements communication through `private`(DM) and `group` chats with the ability to share `media files` such as photo, audio and video.
 
@@ -54,6 +54,11 @@ In this year I'm planning to keep working on this project adding more features, 
 - PostgreSQL
 
 
+
+## Update 3/23/2024
+
+- Added SSL certification
+- Fixed some bugs
 
 ## Update 3/18/2024
 
