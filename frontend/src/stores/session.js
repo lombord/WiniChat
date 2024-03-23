@@ -578,7 +578,7 @@ class SessionSocket extends UserWSMixin(ChatWSMixin(GroupWSMixin())) {
 
   get endpoint() {
     let protocol = "ws";
-    if (location.protocol == "https") {
+    if (location.protocol == "https:") {
       protocol = "wss";
     }
     return `${protocol}://${location.host}/django-ws/session/`;
@@ -622,7 +622,6 @@ class SessionSocket extends UserWSMixin(ChatWSMixin(GroupWSMixin())) {
    */
   onMessage({ event_type, event, data }, wsEvent) {
     try {
-      // console.log(`${event_type}(${event}) =>`, data);
       this[`${event_type}Message`](event, data, wsEvent);
     } catch (error) {
       console.log(error);

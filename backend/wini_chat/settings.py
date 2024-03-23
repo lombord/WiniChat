@@ -17,7 +17,7 @@ if DEBUG:
     SECRET_KEY = "t0EvsE0zkCydedHr2IRIVi9CoXPjJce"
 else:
     SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", get_random_secret_key())
-
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 ALLOWED_HOSTS = [
     host for host in os.getenv("DJANGO_ALLOWED_HOSTS", "").split(",") if host

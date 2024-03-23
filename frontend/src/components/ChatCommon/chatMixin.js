@@ -208,7 +208,7 @@ export default {
       if (this.currProm) await this.currProm;
       const data = this.toFormData(msg);
       try {
-        const prom = this.$session.post(this.msgUrl, data);
+        const prom = this.$session.post(this.msgUrl, data, { timeout: 36e5 });
         return (await this.$session.animate(prom, null, "xyz")).data;
       } catch (error) {
         this.$flashes.axiosError(error);
@@ -339,7 +339,6 @@ export default {
     },
 
     removeMsg(id) {
-      console.log(this.nextLimit, this.nextOff);
       const [context, idx] = this.findMsgIdx(id);
       if (context && idx >= 0) {
         if (this.next && this.nextOff > 0) {

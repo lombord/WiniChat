@@ -13,18 +13,22 @@ services:
       - DJ_HOST=${DJ_HOST}
       - DJ_PORT=${DJ_PORT}
       - DJ_MAX_BODY_SIZE=${DJ_MAX_BODY_SIZE}
+      - WEB_DOMAIN=${WEB_DOMAIN}
     volumes:
       - "static-data:/vol/web"
+      - /etc/letsencrypt/ssl/fullchain.pem:/etc/nginx/ssl/fullchain.pem
+      - /etc/letsencrypt/ssl/privkey.pem:/etc/nginx/ssl/privkey.pem
+
     ports:
-      - target: 8080
-        published: 80
+      - "80:8080"
+      - "443:443"
     networks:
       - frontend
     init: true
     stop_grace_period: 1.5s
 
   django:
-    image: lombord/winichat-api:1.0
+    image: lombord/winichat-api
     deploy:
       mode: replicated
       replicas: 1
