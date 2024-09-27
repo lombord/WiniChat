@@ -33,8 +33,6 @@ When I started I didn't have an idea of WebSockets and had just started working 
 It was a long journey and fun at the same time.
 
 
-### Future Plans
-In this year I'm planning to keep working on this project adding more features, improve core logics and eventually host it when its ready. Honestly I'm really excited and do really hope that this will eventually become a real app that people(at least my friends😃) use on daily basis.
 
 ## 🛠️ Used technologies
 
